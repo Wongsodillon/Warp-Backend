@@ -10,14 +10,14 @@ import org.springframework.stereotype.Component;
 @Component
 public class RequestContextHelper {
 
-  public void setRequestId(String requestId) {
+  public static String getRequestId() {
+    return MDC.get(FieldNames.REQUEST_ID);
+  }
+
+  public static void setRequestId(String requestId) {
     if (StringUtils.isBlank(requestId)) {
       throw new ValidationException(ErrorCode.REQUEST_ID_IS_BLANK);
     }
     MDC.put(FieldNames.REQUEST_ID, requestId);
-  }
-
-  public String getRequestId() {
-    return MDC.get(FieldNames.REQUEST_ID);
   }
 }
