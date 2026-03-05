@@ -1,6 +1,6 @@
 package com.warp.warp_backend.model.entity;
 
-import com.warp.warp_backend.model.constant.FieldNames;
+import com.warp.warp_backend.model.constant.EntityConstant;
 import com.warp.warp_backend.model.constant.TableNames;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -20,9 +20,9 @@ import lombok.experimental.SuperBuilder;
 @Table(name = TableNames.USERS)
 public class User extends BaseEntity {
 
-  @Column(name = FieldNames.CLERK_USER_ID, nullable = false, unique = true, length = 255)
+  @Column(name = EntityConstant.CLERK_USER_ID, nullable = false, unique = true, length = 255)
   private String clerkUserId;
 
-  @Column(name = FieldNames.ROLE, nullable = false, length = 50)
+  @Column(name = EntityConstant.ROLE, nullable = false, length = 50)
   private String role;
 }

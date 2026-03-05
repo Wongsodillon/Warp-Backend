@@ -25,10 +25,8 @@ public class SecurityConfiguration {
         .logout(AbstractHttpConfigurer::disable)
         .httpBasic(AbstractHttpConfigurer::disable)
         .authorizeHttpRequests(auth -> auth
-            .requestMatchers("/*")
-            .permitAll()
-            .anyRequest()
-            .authenticated());
+            .requestMatchers("/api/**").authenticated()
+            .requestMatchers("/*").permitAll());
     return http.build();
   }
 }

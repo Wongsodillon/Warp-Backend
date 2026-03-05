@@ -1,0 +1,9 @@
+CREATE SEQUENCE IF NOT EXISTS urls_id_seq
+START WITH 1
+INCREMENT BY 1
+CACHE 100;
+
+SELECT setval(
+    'urls_id_seq',
+    COALESCE((SELECT MAX(id) FROM urls), 1)
+);

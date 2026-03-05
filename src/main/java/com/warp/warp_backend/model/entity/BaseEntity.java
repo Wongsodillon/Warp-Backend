@@ -1,6 +1,6 @@
 package com.warp.warp_backend.model.entity;
 
-import com.warp.warp_backend.model.constant.FieldNames;
+import com.warp.warp_backend.model.constant.EntityConstant;
 import jakarta.persistence.Column;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.GeneratedValue;
@@ -27,17 +27,17 @@ public abstract class BaseEntity {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
-  @Column(name = FieldNames.ID)
+  @Column(name = EntityConstant.ID)
   private Long id;
 
   @CreatedDate
-  @Column(name = FieldNames.CREATED_DATE, nullable = false, updatable = false)
+  @Column(name = EntityConstant.CREATED_DATE, nullable = false, updatable = false)
   private Instant createdDate;
 
   @LastModifiedDate
-  @Column(name = FieldNames.UPDATED_DATE)
+  @Column(name = EntityConstant.UPDATED_DATE)
   private Instant updatedDate;
 
-  @Column(name = FieldNames.DELETED_DATE)
+  @Column(name = EntityConstant.DELETED_DATE)
   private Instant deletedDate;
 }

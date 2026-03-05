@@ -1,6 +1,6 @@
 package com.warp.warp_backend.model.entity;
 
-import com.warp.warp_backend.model.constant.FieldNames;
+import com.warp.warp_backend.model.constant.EntityConstant;
 import com.warp.warp_backend.model.constant.TableNames;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -24,32 +24,32 @@ import java.time.Instant;
 @Table(name = TableNames.URLS)
 public class Url extends BaseEntity {
 
-  @Column(name = FieldNames.SHORT_URL, nullable = false, unique = true, length = 10)
+  @Column(name = EntityConstant.SHORT_URL, nullable = false, unique = true, length = 10)
   private String shortUrl;
 
-  @Column(name = FieldNames.DESTINATION_URL, nullable = false)
+  @Column(name = EntityConstant.DESTINATION_URL, nullable = false)
   private String destinationUrl;
 
-  @Column(name = FieldNames.PASSWORD)
+  @Column(name = EntityConstant.PASSWORD)
   private String password;
 
-  @Column(name = FieldNames.EXPIRY_DATE)
+  @Column(name = EntityConstant.EXPIRY_DATE)
   private Instant expiryDate;
 
-  @Column(name = FieldNames.DISABLED, nullable = false)
+  @Column(name = EntityConstant.DISABLED, nullable = false)
   private boolean disabled;
 
-  @Column(name = FieldNames.IS_PROTECTED, nullable = false)
+  @Column(name = EntityConstant.IS_PROTECTED, nullable = false)
   private boolean isProtected;
 
   @CreatedBy
-  @Column(name = FieldNames.CREATED_BY)
+  @Column(name = EntityConstant.CREATED_BY)
   private String createdBy;
 
   @LastModifiedBy
-  @Column(name = FieldNames.UPDATED_BY)
+  @Column(name = EntityConstant.UPDATED_BY)
   private String updatedBy;
 
-  @Column(name = FieldNames.USER_ID)
+  @Column(name = EntityConstant.USER_ID)
   private Long userId;
 }
