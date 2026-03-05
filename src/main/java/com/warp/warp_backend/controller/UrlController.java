@@ -1,12 +1,12 @@
 package com.warp.warp_backend.controller;
 
+import com.warp.warp_backend.model.annotation.Validate;
 import com.warp.warp_backend.model.constant.ApiPath;
 import com.warp.warp_backend.model.request.CreateUrlRequest;
 import com.warp.warp_backend.model.response.CreateUrlResponse;
 import com.warp.warp_backend.model.response.RedirectResponse;
 import com.warp.warp_backend.model.response.RestSingleResponse;
 import com.warp.warp_backend.service.UrlService;
-import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -37,7 +37,7 @@ public class UrlController extends BaseController {
       produces = MediaType.APPLICATION_JSON_VALUE,
       consumes = MediaType.APPLICATION_JSON_VALUE
   )
-  public RestSingleResponse<CreateUrlResponse> shortenUrl(@RequestBody @Valid CreateUrlRequest request) {
+  public RestSingleResponse<CreateUrlResponse> shortenUrl(@RequestBody @Validate CreateUrlRequest request) {
     CreateUrlResponse createUrlResponse = urlService.shortenUrl(request);
     return this.toResponseSingleResponse(createUrlResponse);
   }
