@@ -4,6 +4,7 @@ import com.warp.warp_backend.model.constant.EntityConstant;
 import com.warp.warp_backend.model.constant.TableNames;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -23,6 +24,10 @@ import java.time.Instant;
 @EqualsAndHashCode(callSuper = true)
 @Table(name = TableNames.URLS)
 public class Url extends BaseEntity {
+
+  @Id
+  @Column(name = EntityConstant.ID)
+  private Long id;
 
   @Column(name = EntityConstant.SHORT_URL, nullable = false, unique = true, length = 10)
   private String shortUrl;

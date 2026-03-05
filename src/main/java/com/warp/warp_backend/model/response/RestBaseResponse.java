@@ -1,4 +1,4 @@
-package com.warp.warp_backend.model.common;
+package com.warp.warp_backend.model.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

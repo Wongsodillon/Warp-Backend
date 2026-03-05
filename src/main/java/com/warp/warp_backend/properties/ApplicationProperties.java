@@ -8,6 +8,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties("application")
 public class ApplicationProperties {
 
-  @Value("${spring.application.name}")
-  private String applicationName;
+  @Value("${application.short-url.secret}")
+  private long secret;
 }

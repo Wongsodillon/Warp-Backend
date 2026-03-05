@@ -1,7 +1,7 @@
 package com.warp.warp_backend.controller.advice;
 
 import com.warp.warp_backend.model.common.ErrorCode;
-import com.warp.warp_backend.model.common.RestBaseResponse;
+import com.warp.warp_backend.model.response.RestBaseResponse;
 import com.warp.warp_backend.model.exception.BaseException;
 import com.warp.warp_backend.util.RequestContextHelper;
 import jakarta.servlet.http.HttpServletRequest;

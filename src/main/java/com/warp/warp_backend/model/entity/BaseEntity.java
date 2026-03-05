@@ -3,9 +3,6 @@ package com.warp.warp_backend.model.entity;
 import com.warp.warp_backend.model.constant.EntityConstant;
 import jakarta.persistence.Column;
 import jakarta.persistence.EntityListeners;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -24,11 +21,6 @@ import java.time.Instant;
 @NoArgsConstructor
 @SuperBuilder
 public abstract class BaseEntity {
-
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  @Column(name = EntityConstant.ID)
-  private Long id;
 
   @CreatedDate
   @Column(name = EntityConstant.CREATED_DATE, nullable = false, updatable = false)
