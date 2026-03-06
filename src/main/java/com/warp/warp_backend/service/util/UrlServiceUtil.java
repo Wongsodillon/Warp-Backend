@@ -1,6 +1,8 @@
 package com.warp.warp_backend.service.util;
 
 import com.warp.warp_backend.model.entity.Url;
+import com.warp.warp_backend.properties.ApplicationProperties;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
@@ -9,6 +11,9 @@ import java.util.Objects;
 
 @Component
 public class UrlServiceUtil {
+
+  @Autowired
+  private ApplicationProperties properties;
 
   public URI resolveRedirectTarget(Url url) {
     if (url.isDisabled()) {
@@ -30,5 +35,9 @@ public class UrlServiceUtil {
       return false;
     }
     return Instant.now().isAfter(expiryDate);
+  }
+
+  public String formatUrl(String shortUrl) {
+    return String.format("%s/%s", properties.getDomainUrl(), shortUrl);
   }
 }
