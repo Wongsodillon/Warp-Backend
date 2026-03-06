@@ -25,7 +25,11 @@ public class ClerkJwtAuthenticationConverter implements
     String clerkUserId = jwt.getSubject();
 
     User user = userRepository.findByClerkUserId(clerkUserId)
-        .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
+        .orElseGet(() -> {
+          User newUser = new User();
+          newUser.setClerkUserId(clerkUserId);
+          return userRepository.save(newUser);
+        });
 
     return new UsernamePasswordAuthenticationToken(user, null, List.of());
   }
