@@ -1,8 +1,6 @@
 package com.warp.warp_backend.config;
 
-import com.warp.warp_backend.model.common.ErrorCode;
 import com.warp.warp_backend.model.entity.User;
-import com.warp.warp_backend.model.exception.NotFoundException;
 import com.warp.warp_backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.convert.converter.Converter;

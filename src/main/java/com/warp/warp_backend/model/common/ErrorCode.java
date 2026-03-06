@@ -14,7 +14,6 @@ public enum ErrorCode {
   UNAUTHENTICATED(401,"ERR-401001", "Unauthenticated User"),
 
   DESTINATION_URL_NOT_FOUND(404, "ERR-404001", "URL not found"),
-  USER_NOT_FOUND(404, "ERR-404002", "User not found"),
 
   UNSPECIFIED(500, "ERR-500001", "Unspecified error");
 
