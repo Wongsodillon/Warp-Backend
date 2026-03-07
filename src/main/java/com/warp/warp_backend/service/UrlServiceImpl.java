@@ -10,6 +10,7 @@ import com.warp.warp_backend.properties.ApplicationProperties;
 import com.warp.warp_backend.repository.UrlRepository;
 import com.warp.warp_backend.service.util.UrlServiceUtil;
 import com.warp.warp_backend.util.Base62;
+import com.warp.warp_backend.util.UrlValidationUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -32,6 +33,9 @@ public class UrlServiceImpl implements UrlService {
   @Autowired
   private ApplicationProperties applicationProperties;
 
+  @Autowired
+  private UrlValidationUtil urlValidationUtil;
+
   @Override
   public RedirectResponse resolveDestination(String shortUrl) {
     Url url = urlRepository.findByShortUrl(shortUrl)
@@ -45,6 +49,7 @@ public class UrlServiceImpl implements UrlService {
 
   @Override
   public CreateUrlResponse shortenUrl(CreateUrlRequest request) {
+    urlValidationUtil.validateDestinationUrl(request.getDestinationUrl());
 
     long id = urlRepository.getNextId();
     long obfuscated = id ^ applicationProperties.getSecret();

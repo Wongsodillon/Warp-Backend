@@ -10,6 +10,7 @@ public enum ErrorCode {
 
   REQUEST_ID_IS_BLANK(400, "ERR-400001", "requestId parameter can't be null"),
   DESTINATION_URL_IS_BLANK(400, "ERR-400002", "Destination URL can't be empty"),
+  DESTINATION_URL_IS_INVALID(400, "ERR-400003", "Destination URL is invalid"),
 
   UNAUTHENTICATED(401,"ERR-401001", "Unauthenticated User"),
 
