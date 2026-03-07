@@ -16,15 +16,6 @@ public class UrlServiceUtil {
   private ApplicationProperties properties;
 
   public URI resolveRedirectTarget(Url url) {
-    if (url.isDisabled()) {
-      return URI.create("/disabled");
-    }
-    if (isExpired(url)) {
-      return URI.create("/expired");
-    }
-    if (url.isProtected() && Objects.nonNull(url.getPassword())) {
-      return URI.create("/password/" + url.getShortUrl());
-    }
     return URI.create(url.getDestinationUrl());
   }
 

@@ -9,7 +9,6 @@ import com.warp.warp_backend.model.response.RedirectResponse;
 import com.warp.warp_backend.properties.ApplicationProperties;
 import com.warp.warp_backend.repository.UrlRepository;
 import com.warp.warp_backend.service.util.UrlServiceUtil;
-import com.warp.warp_backend.util.AuthHelper;
 import com.warp.warp_backend.util.Base62;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -26,6 +25,9 @@ public class UrlServiceImpl implements UrlService {
 
   @Autowired
   private UrlServiceUtil urlServiceUtil;
+
+  @Autowired
+  private CurrentUserService currentUserService;
 
   @Autowired
   private ApplicationProperties applicationProperties;
@@ -51,7 +53,7 @@ public class UrlServiceImpl implements UrlService {
 
     Url url = Url.builder()
         .id(id)
-        .userId(AuthHelper.getCurrentUserId())
+        .userId(currentUserService.getCurrentUserId())
         .shortUrl(shortUrl)
         .destinationUrl(request.getDestinationUrl())
         .expiryDate(Optional.ofNullable(request.getExpiresAt())
