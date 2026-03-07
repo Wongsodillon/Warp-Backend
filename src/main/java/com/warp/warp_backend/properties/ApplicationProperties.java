@@ -10,4 +10,10 @@ public class ApplicationProperties {
 
   @Value("${application.short-url.secret}")
   private long secret;
+
+  @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri}")
+  private String jwksUri;
+
+  @Value("${application.domain.url}")
+  private String domainUrl;
 }

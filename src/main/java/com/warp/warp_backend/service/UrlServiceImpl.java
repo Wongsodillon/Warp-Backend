@@ -27,6 +27,9 @@ public class UrlServiceImpl implements UrlService {
   private UrlServiceUtil urlServiceUtil;
 
   @Autowired
+  private CurrentUserService currentUserService;
+
+  @Autowired
   private ApplicationProperties applicationProperties;
 
   @Override
@@ -50,6 +53,7 @@ public class UrlServiceImpl implements UrlService {
 
     Url url = Url.builder()
         .id(id)
+        .userId(currentUserService.getCurrentUserId())
         .shortUrl(shortUrl)
         .destinationUrl(request.getDestinationUrl())
         .expiryDate(Optional.ofNullable(request.getExpiresAt())
@@ -60,7 +64,7 @@ public class UrlServiceImpl implements UrlService {
     urlRepository.save(url);
 
     return CreateUrlResponse.builder()
-        .shortUrl(shortUrl)
+        .shortUrl(urlServiceUtil.formatUrl(shortUrl))
         .destinationUrl(request.getDestinationUrl())
         .build();
   }
