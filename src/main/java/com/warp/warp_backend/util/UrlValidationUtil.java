@@ -55,7 +55,8 @@ public class UrlValidationUtil {
     return address.isLoopbackAddress()
         || address.isSiteLocalAddress()
         || address.isLinkLocalAddress()
-        || address.isAnyLocalAddress();
+        || address.isAnyLocalAddress()
+        || address.isMulticastAddress();
   }
 
   private boolean isRawIpAddress(InetAddress address, String host) {

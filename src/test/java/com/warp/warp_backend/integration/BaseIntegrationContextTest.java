@@ -42,7 +42,7 @@ public abstract class BaseIntegrationContextTest {
         .issuedAt(Instant.now())
         .expiresAt(Instant.now().plusSeconds(3600))
         .build();
-    BDDMockito.given(jwtDecoder.decode(ArgumentMatchers.anyString())).willReturn(jwt);
+    BDDMockito.given(jwtDecoder.decode(TestConstant.TEST_TOKEN)).willReturn(jwt);
   }
 
   protected MockHttpServletRequestBuilder withAuth(MockHttpServletRequestBuilder request) {

@@ -13,6 +13,7 @@ public class TestConstant {
   public static final String LOCALHOST_URL = "http://localhost/path";
   public static final String PRIVATE_IP_URL = "http://192.168.1.1/path";
   public static final String RAW_IP_URL = "http://8.8.8.8/path";
+  public static final String MULTICAST_IP_URL = "http://224.0.0.1/path";
   public static final String FTP_URL = "ftp://example.com/file";
   public static final String MALFORMED_URL = "not-a-url";
 }

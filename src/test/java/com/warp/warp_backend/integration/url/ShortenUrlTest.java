@@ -64,10 +64,6 @@ public class ShortenUrlTest extends BaseIntegrationContextTest {
     Assertions.assertTrue(response.isSuccess());
     Assertions.assertTrue(StringUtils.isNotBlank(response.getValue().getShortUrl()));
     Assertions.assertEquals(TestConstant.DESTINATION_URL, response.getValue().getDestinationUrl());
-
-    String shortUrl = response.getValue().getShortUrl();
-    String shortCode = shortUrl.substring(shortUrl.lastIndexOf("/") + 1);
-    urlRepository.deleteByShortUrl(shortCode);
   }
 
   @Test
@@ -148,6 +144,20 @@ public class ShortenUrlTest extends BaseIntegrationContextTest {
         .path(ApiPath.SHORTEN_URL)
         .body(CreateUrlRequest.builder()
             .destinationUrl(TestConstant.MALFORMED_URL)
+            .build())
+        .errorCode(ErrorCode.DESTINATION_URL_IS_INVALID)
+        .httpStatus(HttpStatus.BAD_REQUEST)
+        .build());
+  }
+
+  @Test
+  void shorten_multicastUrl_returns400() throws Exception {
+    runFailedTest(FailedTestDto.builder()
+        .mockMvc(mockMvc)
+        .httpMethod(HttpMethod.POST)
+        .path(ApiPath.SHORTEN_URL)
+        .body(CreateUrlRequest.builder()
+            .destinationUrl(TestConstant.MULTICAST_IP_URL)
             .build())
         .errorCode(ErrorCode.DESTINATION_URL_IS_INVALID)
         .httpStatus(HttpStatus.BAD_REQUEST)
