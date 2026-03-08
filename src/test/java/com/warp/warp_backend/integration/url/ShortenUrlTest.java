@@ -13,6 +13,7 @@ import com.warp.warp_backend.model.constant.ApiPath;
 import com.warp.warp_backend.model.request.CreateUrlRequest;
 import com.warp.warp_backend.model.response.CreateUrlResponse;
 import com.warp.warp_backend.model.response.RestSingleResponse;
+import com.warp.warp_backend.repository.UrlRepository;
 import joptsimple.internal.Strings;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,6 +24,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
 
 public class ShortenUrlTest extends BaseIntegrationContextTest {
 
@@ -32,12 +34,16 @@ public class ShortenUrlTest extends BaseIntegrationContextTest {
   @Autowired
   private MockMvc mockMvc;
 
+  @Autowired
+  private UrlRepository urlRepository;
+
   @BeforeEach
   void setUp() {
     mockAuthForUser(TestConstant.TEST_CLERK_USER_ID);
   }
 
   @Test
+  @Transactional
   void shorten_validRequest_returns200() throws Exception {
     CreateUrlRequest request = CreateUrlRequest.builder()
         .destinationUrl(TestConstant.DESTINATION_URL)
@@ -58,6 +64,10 @@ public class ShortenUrlTest extends BaseIntegrationContextTest {
     Assertions.assertTrue(response.isSuccess());
     Assertions.assertTrue(StringUtils.isNotBlank(response.getValue().getShortUrl()));
     Assertions.assertEquals(TestConstant.DESTINATION_URL, response.getValue().getDestinationUrl());
+
+    String shortUrl = response.getValue().getShortUrl();
+    String shortCode = shortUrl.substring(shortUrl.lastIndexOf("/") + 1);
+    urlRepository.deleteByShortUrl(shortCode);
   }
 
   @Test

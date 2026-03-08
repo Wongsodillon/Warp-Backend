@@ -12,4 +12,6 @@ public interface UrlRepository extends JpaRepository<Url, Long> {
 
   @Query(value = "SELECT nextval('urls_id_seq')", nativeQuery = true)
   Long getNextId();
+
+  void deleteByShortUrl(String shortUrl);
 }

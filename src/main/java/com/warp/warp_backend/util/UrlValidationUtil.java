@@ -10,6 +10,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.UnknownHostException;
+import java.util.Objects;
 import java.util.Set;
 
 @Component
@@ -38,7 +39,7 @@ public class UrlValidationUtil {
   }
 
   private boolean isValidHost(String host) {
-    if (host == null || host.isBlank()) {
+    if (Objects.isNull(host) || host.isBlank()) {
       return false;
     }
     InetAddress address;
