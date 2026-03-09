@@ -1,57 +1,100 @@
 package com.warp.warp_backend.service;
 
+import com.warp.warp_backend.model.constant.ConstantValue;
+import com.warp.warp_backend.model.entity.Url;
 import com.warp.warp_backend.model.general.CachedUrl;
+import com.warp.warp_backend.model.general.UrlStatus;
 import com.warp.warp_backend.repository.UrlRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.RedisTemplate;
+import com.warp.warp_backend.util.CacheUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Objects;
+import java.util.Optional;
 
 @Service
 public class UrlCacheService {
 
-    private static final Logger log = LoggerFactory.getLogger(UrlCacheService.class);
-    private static final String CACHE_PREFIX = "urls:";
-    private static final Duration DEFAULT_TTL = Duration.ofHours(1);
+  private static final Logger log = LoggerFactory.getLogger(UrlCacheService.class);
+  private static final Duration DEFAULT_TTL   = Duration.ofHours(1);
+  private static final Duration EXPIRED_TTL   = Duration.ofMinutes(5);
+  private static final Duration NOT_FOUND_TTL = Duration.ofSeconds(45);
 
-    @Autowired
-    private RedisTemplate<String, CachedUrl> redisTemplate;
+  @Autowired
+  private CacheUtil cacheUtil;
 
-    @Autowired
-    private UrlRepository urlRepository;
+  @Autowired
+  private UrlRepository urlRepository;
 
-    public CachedUrl findCachedUrl(String shortUrl) {
-        String key = CACHE_PREFIX + shortUrl;
+  public CachedUrl findCachedUrl(String shortUrl) {
+    String key = ConstantValue.URL_CACHE_PREFIX + shortUrl;
 
-        CachedUrl cached = redisTemplate.opsForValue().get(key);
-        if (Objects.nonNull(cached)) {
-            log.info("[cache HIT] shortUrl={}", shortUrl);
-            return cached;
-        }
-
-        CachedUrl url = urlRepository.findByShortUrl(shortUrl)
-            .map(u -> CachedUrl.builder()
-                .destinationUrl(u.getDestinationUrl())
-                .expiryDate(Objects.nonNull(u.getExpiryDate()) ? u.getExpiryDate().toEpochMilli() : null)
-                .isProtected(u.isProtected())
-                .disabled(u.isDisabled())
-                .deleted(Objects.nonNull(u.getDeletedDate()))
-                .build())
-            .orElse(null);
-
-        if (Objects.nonNull(url) && !url.isDeleted() && !url.isDisabled()) {
-            redisTemplate.opsForValue().set(key, url, DEFAULT_TTL);
-        }
-
-        log.info("[cache MISS] shortUrl={}", shortUrl);
-        return url;
+    CachedUrl cached = cacheUtil.get(key);
+    if (Objects.nonNull(cached)) {
+      log.info("[cache HIT] shortUrl={} status={}", shortUrl, cached.getStatus());
+      return cached;
     }
 
-    public void evictUrl(String shortUrl) {
-        redisTemplate.delete(CACHE_PREFIX + shortUrl);
+    log.info("[cache MISS] shortUrl={}", shortUrl);
+
+    return urlRepository.findByShortUrl(shortUrl)
+        .map(u -> resolveFromDb(key, u))
+        .orElseGet(() -> cacheAndReturn(key, CachedUrl.builder()
+            .status(UrlStatus.NOT_FOUND)
+            .build(), NOT_FOUND_TTL));
+  }
+
+  private CachedUrl resolveFromDb(String key, Url u) {
+    if (Objects.nonNull(u.getDeletedDate()) || u.isDisabled()) {
+      return cacheAndReturn(key, CachedUrl.builder()
+          .status(UrlStatus.NOT_FOUND)
+          .build(), NOT_FOUND_TTL);
     }
+    if (Objects.nonNull(u.getExpiryDate()) && System.currentTimeMillis() > u.getExpiryDate().toEpochMilli()) {
+      return cacheAndReturn(key, CachedUrl.builder()
+          .status(UrlStatus.EXPIRED)
+          .build(), EXPIRED_TTL);
+    }
+
+    Long expiryMs = Optional.ofNullable(u.getExpiryDate())
+        .map(Instant::toEpochMilli)
+        .orElse(null);
+
+    return computeActiveTtl(expiryMs)
+        .map(ttl -> cacheAndReturn(key, CachedUrl.builder()
+            .status(UrlStatus.ACTIVE)
+            .destinationUrl(u.getDestinationUrl())
+            .expiryDate(expiryMs)
+            .isProtected(u.isProtected())
+            .build(), ttl))
+        .orElseGet(() -> CachedUrl.builder()
+            .status(UrlStatus.EXPIRED)
+            .build());
+  }
+
+  private Optional<Duration> computeActiveTtl(Long expiryMs) {
+    if (Objects.isNull(expiryMs)) {
+      return Optional.of(DEFAULT_TTL);
+    }
+    long remainingMs = expiryMs - System.currentTimeMillis();
+    if (remainingMs <= 0) {
+      return Optional.empty();
+    }
+    Duration remaining = Duration.ofMillis(remainingMs);
+    return Optional.of(remaining.compareTo(DEFAULT_TTL) < 0 ? remaining : DEFAULT_TTL);
+  }
+
+  private CachedUrl cacheAndReturn(String key, CachedUrl entry, Duration ttl) {
+    cacheUtil.set(key, entry, ttl);
+    log.info("[cache SET {}] key={} ttl={}", entry.getStatus(), key, ttl);
+    return entry;
+  }
+
+  public void evictUrl(String shortUrl) {
+    cacheUtil.delete(ConstantValue.URL_CACHE_PREFIX + shortUrl);
+  }
 }

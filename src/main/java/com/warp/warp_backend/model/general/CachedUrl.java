@@ -10,10 +10,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class CachedUrl {
-
-  private String destinationUrl;
-  private Long expiryDate;
-  private boolean isProtected;
-  private boolean disabled;
-  private boolean deleted;
+    private UrlStatus status;
+    private String destinationUrl;
+    private Long expiryDate;
+    private boolean isProtected;
 }
