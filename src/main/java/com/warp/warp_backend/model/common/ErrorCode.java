@@ -16,6 +16,8 @@ public enum ErrorCode {
 
   DESTINATION_URL_NOT_FOUND(404, "ERR-404001", "URL not found"),
 
+  URL_EXPIRED(410, "ERR-410001", "URL has expired"),
+
   UNSPECIFIED(500, "ERR-500001", "Unspecified error");
 
   private final int httpStatus;

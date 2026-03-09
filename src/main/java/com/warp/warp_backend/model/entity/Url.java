@@ -29,7 +29,7 @@ public class Url extends BaseEntity {
   @Column(name = EntityConstant.ID)
   private Long id;
 
-  @Column(name = EntityConstant.SHORT_URL, nullable = false, unique = true, length = 10)
+  @Column(name = EntityConstant.SHORT_URL, nullable = false, unique = true, length = 30)
   private String shortUrl;
 
   @Column(name = EntityConstant.DESTINATION_URL, nullable = false)

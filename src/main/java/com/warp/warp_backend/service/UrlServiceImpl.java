@@ -2,7 +2,9 @@ package com.warp.warp_backend.service;
 
 import com.warp.warp_backend.model.common.ErrorCode;
 import com.warp.warp_backend.model.entity.Url;
+import com.warp.warp_backend.model.exception.BaseException;
 import com.warp.warp_backend.model.exception.NotFoundException;
+import com.warp.warp_backend.model.general.CachedUrl;
 import com.warp.warp_backend.model.request.CreateUrlRequest;
 import com.warp.warp_backend.model.response.CreateUrlResponse;
 import com.warp.warp_backend.model.response.RedirectResponse;
@@ -15,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
+import java.util.Objects;
 import java.time.OffsetDateTime;
 import java.util.Optional;
 
@@ -36,14 +39,23 @@ public class UrlServiceImpl implements UrlService {
   @Autowired
   private UrlValidationUtil urlValidationUtil;
 
+  @Autowired
+  private UrlCacheService urlCacheService;
+
   @Override
   public RedirectResponse resolveDestination(String shortUrl) {
-    Url url = urlRepository.findByShortUrl(shortUrl)
-        .orElseThrow(() -> new NotFoundException(ErrorCode.DESTINATION_URL_NOT_FOUND));
-    URI redirectTarget = urlServiceUtil.resolveRedirectTarget(url);
+    CachedUrl cached = urlCacheService.findCachedUrl(shortUrl);
+
+    if (Objects.isNull(cached) || cached.isDeleted() || cached.isDisabled()) {
+      throw new NotFoundException(ErrorCode.DESTINATION_URL_NOT_FOUND);
+    }
+    if (Objects.nonNull(cached.getExpiryDate()) && System.currentTimeMillis() > cached.getExpiryDate()) {
+      throw new BaseException(ErrorCode.URL_EXPIRED);
+    }
+
     return RedirectResponse.builder()
         .shortUrl(shortUrl)
-        .location(redirectTarget)
+        .location(URI.create(cached.getDestinationUrl()))
         .build();
   }
 
