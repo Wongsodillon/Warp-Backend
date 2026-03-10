@@ -1,6 +1,9 @@
-# CLAUDE.md
+# CLAUDE.md - Warp
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Overview
+A high-performance URL shortening service built with Spring MVC, PostgreSQL, Redis, Kafka, and ClickHouse, designed to handle Millions of DAU and Short URLs. It supports custom short links, password protection, expiry, and a real-time analytics pipeline with sub-50ms redirect latency.
 
 ## Commands
 
@@ -76,3 +79,9 @@ Integration tests live in `src/test/java/com/warp/warp_backend/integration/`.
 - Place new test files under `integration/{resource}/` (e.g. `integration/url/ShortenUrlTest`)
 
 **Naming:** `methodName_condition_expectedResult` (e.g. `shorten_emptyDestinationUrl_returns400`)
+
+## Coding Style
+
+- Use `Objects.isNull(x)` / `Objects.nonNull(x)` instead of `x == null` / `x != null`
+- Prefer framework or utility methods/constants over raw operators or literals when equivalents exist.
+- Avoid manual checks or magic literals when a standard helper provides the same behavior.

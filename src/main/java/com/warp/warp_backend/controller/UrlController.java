@@ -7,6 +7,8 @@ import com.warp.warp_backend.model.response.CreateUrlResponse;
 import com.warp.warp_backend.model.response.RedirectResponse;
 import com.warp.warp_backend.model.response.RestSingleResponse;
 import com.warp.warp_backend.service.UrlService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -20,12 +22,16 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class UrlController extends BaseController {
 
+  private static final Logger log = LoggerFactory.getLogger(UrlController.class);
+
   @Autowired
   private UrlService urlService;
 
   @GetMapping(path = ApiPath.REDIRECT)
   public ResponseEntity<Void> redirect(@PathVariable String shortUrl) {
+    long start = System.currentTimeMillis();
     RedirectResponse redirectResponse = urlService.resolveDestination(shortUrl);
+//    log.info("[redirect   ] shortUrl={} {}ms total", shortUrl, System.currentTimeMillis() - start);
 
     return ResponseEntity.status(HttpStatus.FOUND)
         .location(redirectResponse.getLocation())
