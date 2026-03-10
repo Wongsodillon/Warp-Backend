@@ -64,6 +64,21 @@ public class RedirectTest extends BaseIntegrationContextTest {
   }
 
   @Test
+  void redirect_activeCachedUrl_returns302() throws Exception {
+    cacheUtil.set(
+        ConstantValue.URL_CACHE_PREFIX + TestConstant.SHORT_URL,
+        CachedUrl.builder()
+            .status(UrlStatus.ACTIVE)
+            .destinationUrl(TestConstant.DESTINATION_URL)
+            .build(),
+        Duration.ofHours(1));
+
+    mockMvc.perform(get(ApiPath.REDIRECT, TestConstant.SHORT_URL))
+        .andExpect(status().isFound())
+        .andExpect(header().string("Location", TestConstant.DESTINATION_URL));
+  }
+
+  @Test
   void redirect_nonExistentShortUrl_returns404() throws Exception {
     runFailedTest(FailedTestDto.builder()
         .mockMvc(mockMvc)
@@ -120,8 +135,25 @@ public class RedirectTest extends BaseIntegrationContextTest {
         .mockMvc(mockMvc)
         .httpMethod(HttpMethod.GET)
         .path(ApiPath.REDIRECT)
-        .pathVariables(new Object[]{TestConstant.SHORT_URL})
+        .pathVariables(new Object[] {TestConstant.SHORT_URL})
         .errorCode(ErrorCode.DESTINATION_URL_NOT_FOUND)
+        .useAuth(false)
+        .build());
+  }
+
+  @Test
+  void redirect_expiredCachedMarker_returns410() throws Exception {
+    cacheUtil.set(
+        ConstantValue.URL_CACHE_PREFIX + TestConstant.SHORT_URL,
+        CachedUrl.builder().status(UrlStatus.EXPIRED).build(),
+        Duration.ofMinutes(5));
+
+    runFailedTest(FailedTestDto.builder()
+        .mockMvc(mockMvc)
+        .httpMethod(HttpMethod.GET)
+        .path(ApiPath.REDIRECT)
+        .pathVariables(new Object[]{TestConstant.SHORT_URL})
+        .errorCode(ErrorCode.URL_EXPIRED)
         .useAuth(false)
         .build());
   }

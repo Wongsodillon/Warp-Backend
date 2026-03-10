@@ -54,15 +54,13 @@ public class UrlCacheService {
           .status(UrlStatus.NOT_FOUND)
           .build(), NOT_FOUND_TTL);
     }
-    if (Objects.nonNull(u.getExpiryDate()) && System.currentTimeMillis() > u.getExpiryDate().toEpochMilli()) {
+    if (Objects.nonNull(u.getExpiryDate()) && System.currentTimeMillis() >= u.getExpiryDate().toEpochMilli()) {
       return cacheAndReturn(key, CachedUrl.builder()
           .status(UrlStatus.EXPIRED)
           .build(), EXPIRED_TTL);
     }
 
-    Long expiryMs = Optional.ofNullable(u.getExpiryDate())
-        .map(Instant::toEpochMilli)
-        .orElse(null);
+    Long expiryMs = Objects.nonNull(u.getExpiryDate()) ? u.getExpiryDate().toEpochMilli() : null;
 
     return computeActiveTtl(expiryMs)
         .map(ttl -> cacheAndReturn(key, CachedUrl.builder()
@@ -71,9 +69,9 @@ public class UrlCacheService {
             .expiryDate(expiryMs)
             .isProtected(u.isProtected())
             .build(), ttl))
-        .orElseGet(() -> CachedUrl.builder()
+        .orElseGet(() -> cacheAndReturn(key, CachedUrl.builder()
             .status(UrlStatus.EXPIRED)
-            .build());
+            .build(), EXPIRED_TTL));
   }
 
   private Optional<Duration> computeActiveTtl(Long expiryMs) {
