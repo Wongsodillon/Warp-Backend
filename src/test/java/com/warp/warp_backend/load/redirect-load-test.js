@@ -24,36 +24,36 @@ http.setResponseCallback(
 // ── Options ────────────────────────────────────────────────────────────────────
 export const options = {
   scenarios: {
-    // // 1. Warm-cache baseline — establish p50/p95 on pure Redis-served hits
-    // //    Watch: lettuce.command.completion, url_cache_hits_total
-    // warm_cache_baseline: {
-    //   executor: 'ramping-vus',
-    //   startVUs: 0,
-    //   stages: [
-    //     { duration: '20s', target: 50 },
-    //     { duration: '60s', target: 50 },
-    //     { duration: '20s', target: 0 },
-    //   ],
-    //   exec: 'warmCacheScenario',
-    //   tags: { scenario: 'warm_cache' },
-    // },
-    //
-    // // 2. Thread-pool stress ramp — drive VUs past Tomcat default (200 threads)
-    // //    Watch: tomcat.threads.busy, p99 cliff when VUs > 200
-    // stress_ramp: {
-    //   executor: 'ramping-vus',
-    //   startVUs: 0,
-    //   stages: [
-    //     { duration: '20s', target: 100 },
-    //     { duration: '20s', target: 200 },  // at thread-pool limit
-    //     { duration: '20s', target: 300 },  // over the limit → queuing
-    //     { duration: '40s', target: 300 },  // hold to confirm saturation
-    //     { duration: '20s', target: 0 },
-    //   ],
-    //   exec: 'stressRampScenario',
-    //   tags: { scenario: 'stress_ramp' },
-    //   startTime: '110s',
-    // },
+    // 1. Warm-cache baseline — establish p50/p95 on pure Redis-served hits
+    //    Watch: lettuce.command.completion, url_cache_hits_total
+    warm_cache_baseline: {
+      executor: 'ramping-vus',
+      startVUs: 0,
+      stages: [
+        { duration: '20s', target: 100 },
+        { duration: '60s', target: 100 },
+        { duration: '20s', target: 0 },
+      ],
+      exec: 'warmCacheScenario',
+      tags: { scenario: 'warm_cache' },
+    },
+
+    // 2. Thread-pool stress ramp — drive VUs past Tomcat default (200 threads)
+    //    Watch: tomcat.threads.busy, p99 cliff when VUs > 200
+    stress_ramp: {
+      executor: 'ramping-vus',
+      startVUs: 0,
+      stages: [
+        { duration: '20s', target: 100 },
+        { duration: '20s', target: 200 },  // at thread-pool limit
+        { duration: '20s', target: 300 },  // over the limit → queuing
+        { duration: '40s', target: 300 },  // hold to confirm saturation
+        { duration: '20s', target: 0 },
+      ],
+      exec: 'stressRampScenario',
+      tags: { scenario: 'stress_ramp' },
+      // startTime: '110s',
+    },
 
     // 3. Cache-miss storm — all requests hit DB directly (run with Redis disabled)
     //    HikariCP default pool = 10; excess threads will wait → hikaricp.connections.pending
@@ -67,40 +67,40 @@ export const options = {
       // startTime: '260s',
     },
 
-    // // 4. Mixed realistic workload — 80 % cache hits / 20 % misses
-    // //    Watch: divergence between hit/miss latency; hikaricp under steady mixed load
-    // mixed_workload: {
-    //   executor: 'ramping-arrival-rate',
-    //   startRate: 50,
-    //   timeUnit: '1s',
-    //   stages: [
-    //     { duration: '30s', target: 100 },
-    //     { duration: '60s', target: 200 },
-    //     { duration: '30s', target: 100 },
-    //   ],
-    //   preAllocatedVUs: 60,
-    //   maxVUs: 250,
-    //   exec: 'mixedWorkloadScenario',
-    //   tags: { scenario: 'mixed_workload' },
-    //   startTime: '330s',
-    // },
-    //
-    // // 5. Spike test — 40× burst to expose GC stop-the-world pauses
-    // //    Watch: irregular p99 spikes (jvm.gc.pause), hikaricp burst recovery
-    // spike_test: {
-    //   executor: 'ramping-vus',
-    //   startVUs: 10,
-    //   stages: [
-    //     { duration: '10s', target: 10  },
-    //     { duration: '5s',  target: 400 },  // instant spike
-    //     { duration: '30s', target: 400 },  // sustain
-    //     { duration: '5s',  target: 10  },  // instant drop
-    //     { duration: '20s', target: 10  },  // recovery window
-    //   ],
-    //   exec: 'spikeScenario',
-    //   tags: { scenario: 'spike' },
-    //   startTime: '460s',
-    // },
+    // 4. Mixed realistic workload — 80 % cache hits / 20 % misses
+    //    Watch: divergence between hit/miss latency; hikaricp under steady mixed load
+    mixed_workload: {
+      executor: 'ramping-arrival-rate',
+      startRate: 50,
+      timeUnit: '1s',
+      stages: [
+        { duration: '30s', target: 100 },
+        { duration: '60s', target: 200 },
+        { duration: '30s', target: 100 },
+      ],
+      preAllocatedVUs: 60,
+      maxVUs: 250,
+      exec: 'mixedWorkloadScenario',
+      tags: { scenario: 'mixed_workload' },
+      // startTime: '330s',
+    },
+
+    // 5. Spike test — 40× burst to expose GC stop-the-world pauses
+    //    Watch: irregular p99 spikes (jvm.gc.pause), hikaricp burst recovery
+    spike_test: {
+      executor: 'ramping-vus',
+      startVUs: 10,
+      stages: [
+        { duration: '10s', target: 10  },
+        { duration: '5s',  target: 400 },  // instant spike
+        { duration: '30s', target: 400 },  // sustain
+        { duration: '5s',  target: 10  },  // instant drop
+        { duration: '20s', target: 10  },  // recovery window
+      ],
+      exec: 'spikeScenario',
+      tags: { scenario: 'spike' },
+      // startTime: '460s',
+    },
   },
 
   thresholds: {
