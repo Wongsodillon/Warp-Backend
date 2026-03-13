@@ -33,6 +33,16 @@ public class SecurityConfiguration {
   }
 
   @Bean
+  @Order(0)
+  public SecurityFilterChain actuatorFilterChain(HttpSecurity http) throws Exception {
+    http
+        .securityMatcher("/actuator/**")
+        .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+        .csrf(csrf -> csrf.disable());
+    return http.build();
+  }
+
+  @Bean
   @Order(1)
   public SecurityFilterChain redirectFilterChain(HttpSecurity http) throws Exception {
     http.securityMatcher("/{shortUrl}")
