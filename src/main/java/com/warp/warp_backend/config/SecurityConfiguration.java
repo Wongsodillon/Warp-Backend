@@ -34,11 +34,14 @@ public class SecurityConfiguration {
 
   @Bean
   @Order(0)
-  public SecurityFilterChain actuatorFilterChain(HttpSecurity http) throws Exception {
+  public SecurityFilterChain actuatorFilterChain(HttpSecurity http,
+      ClerkJwtAuthenticationConverter converter) throws Exception {
     http
         .securityMatcher("/actuator/**")
-        .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
-        .csrf(csrf -> csrf.disable());
+        .csrf(csrf -> csrf.disable())
+        .authorizeHttpRequests(auth -> auth.anyRequest().hasRole("ADMIN"))
+        .oauth2ResourceServer(oauth -> oauth
+            .jwt(jwt -> jwt.jwtAuthenticationConverter(converter)));
     return http.build();
   }
 

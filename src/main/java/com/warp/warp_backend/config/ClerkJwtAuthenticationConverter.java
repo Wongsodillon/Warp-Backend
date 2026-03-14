@@ -10,6 +10,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Component;
 
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+
 import java.util.List;
 
 @Component
@@ -25,6 +27,7 @@ public class ClerkJwtAuthenticationConverter implements
 
     User user = userService.resolveOrCreateUser(clerkUserId);
 
-    return new UsernamePasswordAuthenticationToken(user, null, List.of());
+    List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole()));
+    return new UsernamePasswordAuthenticationToken(user, null, authorities);
   }
 }
