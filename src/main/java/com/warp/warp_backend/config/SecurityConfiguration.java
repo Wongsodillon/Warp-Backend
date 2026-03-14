@@ -33,6 +33,21 @@ public class SecurityConfiguration {
   }
 
   @Bean
+  @Order(0)
+  public SecurityFilterChain actuatorFilterChain(HttpSecurity http,
+      ClerkJwtAuthenticationConverter converter) throws Exception {
+    http
+        .securityMatcher("/actuator/**")
+        .csrf(csrf -> csrf.disable())
+        .authorizeHttpRequests(auth -> auth
+            .requestMatchers("/actuator/prometheus").permitAll()
+            .anyRequest().hasRole("ADMIN"))
+        .oauth2ResourceServer(oauth -> oauth
+            .jwt(jwt -> jwt.jwtAuthenticationConverter(converter)));
+    return http.build();
+  }
+
+  @Bean
   @Order(1)
   public SecurityFilterChain redirectFilterChain(HttpSecurity http) throws Exception {
     http.securityMatcher("/{shortUrl}")

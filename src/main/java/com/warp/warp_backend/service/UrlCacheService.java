@@ -6,13 +6,13 @@ import com.warp.warp_backend.model.general.CachedUrl;
 import com.warp.warp_backend.model.general.UrlStatus;
 import com.warp.warp_backend.repository.UrlRepository;
 import com.warp.warp_backend.util.CacheUtil;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
-import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -23,6 +23,9 @@ public class UrlCacheService {
   private static final Duration DEFAULT_TTL   = Duration.ofHours(1);
   private static final Duration EXPIRED_TTL   = Duration.ofMinutes(5);
   private static final Duration NOT_FOUND_TTL = Duration.ofSeconds(45);
+
+  @Autowired
+  private MeterRegistry meterRegistry;
 
   @Autowired
   private CacheUtil cacheUtil;
@@ -36,10 +39,12 @@ public class UrlCacheService {
     CachedUrl cached = cacheUtil.get(key);
     if (Objects.nonNull(cached)) {
       log.info("[cache HIT] shortUrl={} status={}", shortUrl, cached.getStatus());
+      meterRegistry.counter("url.cache.hits").increment();
       return cached;
     }
 
     log.info("[cache MISS] shortUrl={}", shortUrl);
+    meterRegistry.counter("url.cache.misses").increment();
 
     return urlRepository.findByShortUrl(shortUrl)
         .map(u -> resolveFromDb(key, u))
