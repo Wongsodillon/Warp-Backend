@@ -39,7 +39,9 @@ public class SecurityConfiguration {
     http
         .securityMatcher("/actuator/**")
         .csrf(csrf -> csrf.disable())
-        .authorizeHttpRequests(auth -> auth.anyRequest().hasRole("ADMIN"))
+        .authorizeHttpRequests(auth -> auth
+            .requestMatchers("/actuator/prometheus").permitAll()
+            .anyRequest().hasRole("ADMIN"))
         .oauth2ResourceServer(oauth -> oauth
             .jwt(jwt -> jwt.jwtAuthenticationConverter(converter)));
     return http.build();
