@@ -9,7 +9,7 @@ import com.warp.warp_backend.model.response.RedirectResponse;
 import com.warp.warp_backend.model.response.RestSingleResponse;
 import com.warp.warp_backend.service.UrlEventPublisher;
 import com.warp.warp_backend.service.UrlService;
-import com.warp.warp_backend.util.DeviceTypeUtil;
+import com.warp.warp_backend.util.UserAgentUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,6 +37,9 @@ public class UrlController extends BaseController {
   @Autowired
   private UrlEventPublisher urlEventPublisher;
 
+  @Autowired
+  private UserAgentUtil userAgentUtil;
+
   @GetMapping(path = ApiPath.REDIRECT)
   public ResponseEntity<Void> redirect(@PathVariable String shortUrl, HttpServletRequest request) {
     long start = System.currentTimeMillis();
@@ -53,9 +56,9 @@ public class UrlController extends BaseController {
         .shortUrl(shortUrl)
         .timestamp(Instant.now())
         .countryCode(request.getHeader("X-Country-Code"))
-        .referrer(request.getHeader("Referer"))
-        .userAgent(request.getHeader("User-Agent"))
-        .deviceType(DeviceTypeUtil.parse(request.getHeader("User-Agent")))
+        .referrer(userAgentUtil.parseReferrer(request.getHeader("Referer")))
+        .deviceType(userAgentUtil.parseDeviceType(request.getHeader("User-Agent")))
+        .browser(userAgentUtil.parseBrowser(request.getHeader("User-Agent")))
         .responseLatencyMs(latency)
         .build();
     urlEventPublisher.publish(event);

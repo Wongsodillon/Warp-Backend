@@ -2,8 +2,7 @@
   "permissions": {
     "allow": [
       "WebSearch",
-      "Bash(./mvnw test:*)",
-      "Bash(find:*)"
+      "Bash(./mvnw test:*)"
     ]
   }
 }

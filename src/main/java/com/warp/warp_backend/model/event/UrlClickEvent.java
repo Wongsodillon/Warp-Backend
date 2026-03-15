@@ -19,7 +19,7 @@ public class UrlClickEvent {
   private Instant timestamp;
   private String countryCode;
   private String deviceType;
+  private String browser;
   private String referrer;
-  private String userAgent;
   private long responseLatencyMs;
 }
