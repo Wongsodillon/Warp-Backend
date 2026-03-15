@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class CachedUrl {
+    private Long urlId;
     private UrlStatus status;
     private String destinationUrl;
     private Long expiryDate;

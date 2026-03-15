@@ -2,11 +2,15 @@ package com.warp.warp_backend.controller;
 
 import com.warp.warp_backend.model.annotation.Validate;
 import com.warp.warp_backend.model.constant.ApiPath;
+import com.warp.warp_backend.model.event.UrlClickEvent;
 import com.warp.warp_backend.model.request.CreateUrlRequest;
 import com.warp.warp_backend.model.response.CreateUrlResponse;
 import com.warp.warp_backend.model.response.RedirectResponse;
 import com.warp.warp_backend.model.response.RestSingleResponse;
+import com.warp.warp_backend.service.UrlEventPublisher;
 import com.warp.warp_backend.service.UrlService;
+import com.warp.warp_backend.util.DeviceTypeUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +23,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Instant;
+import java.util.UUID;
+
 @RestController
 public class UrlController extends BaseController {
 
@@ -27,15 +34,33 @@ public class UrlController extends BaseController {
   @Autowired
   private UrlService urlService;
 
+  @Autowired
+  private UrlEventPublisher urlEventPublisher;
+
   @GetMapping(path = ApiPath.REDIRECT)
-  public ResponseEntity<Void> redirect(@PathVariable String shortUrl) {
+  public ResponseEntity<Void> redirect(@PathVariable String shortUrl, HttpServletRequest request) {
     long start = System.currentTimeMillis();
     RedirectResponse redirectResponse = urlService.resolveDestination(shortUrl);
-//    log.info("[redirect   ] shortUrl={} {}ms total", shortUrl, System.currentTimeMillis() - start);
 
-    return ResponseEntity.status(HttpStatus.FOUND)
+    ResponseEntity<Void> response = ResponseEntity.status(HttpStatus.FOUND)
         .location(redirectResponse.getLocation())
         .build();
+
+    long latency = System.currentTimeMillis() - start;
+    UrlClickEvent event = UrlClickEvent.builder()
+        .eventId(UUID.randomUUID())
+        .urlId(redirectResponse.getUrlId())
+        .shortUrl(shortUrl)
+        .timestamp(Instant.now())
+        .countryCode(request.getHeader("X-Country-Code"))
+        .referrer(request.getHeader("Referer"))
+        .userAgent(request.getHeader("User-Agent"))
+        .deviceType(DeviceTypeUtil.parse(request.getHeader("User-Agent")))
+        .responseLatencyMs(latency)
+        .build();
+    urlEventPublisher.publish(event);
+
+    return response;
   }
 
   @PostMapping(
