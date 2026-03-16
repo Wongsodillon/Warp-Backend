@@ -1,5 +1,6 @@
 package com.warp.warp_backend.util;
 
+import com.warp.warp_backend.model.general.UserAgentInfo;
 import org.springframework.stereotype.Component;
 import ua_parser.Client;
 import ua_parser.Parser;
@@ -18,9 +19,28 @@ public class UserAgentUtil {
     this.parser = new Parser();
   }
 
-  public String parseBrowser(String userAgent) {
-    if (Objects.isNull(userAgent)) return "Unknown";
-    return parser.parse(userAgent).userAgent.family;
+  public UserAgentInfo parseUserAgent(String userAgent) {
+    if (Objects.isNull(userAgent)) {
+      return UserAgentInfo.builder().browser("Unknown").deviceType("Unknown").build();
+    }
+    Client client = parser.parse(userAgent);
+
+    String browser = client.userAgent.family;
+
+    String deviceFamily = client.device.family.toLowerCase();
+    String osFamily = client.os.family.toLowerCase();
+    String deviceType;
+    if (deviceFamily.contains("tablet") || deviceFamily.equals("ipad")) {
+      deviceType = "Tablet";
+    } else if (osFamily.equals("ios") || osFamily.equals("android")
+        || deviceFamily.contains("phone") || deviceFamily.contains("mobile")
+        || deviceFamily.equals("iphone")) {
+      deviceType = "Mobile";
+    } else {
+      deviceType = "Desktop";
+    }
+
+    return UserAgentInfo.builder().browser(browser).deviceType(deviceType).build();
   }
 
   public String parseReferrer(String referer) {
@@ -43,16 +63,4 @@ public class UserAgentUtil {
     return host;
   }
 
-  public String parseDeviceType(String userAgent) {
-    if (Objects.isNull(userAgent)) return "Unknown";
-
-    Client client = parser.parse(userAgent);
-    String deviceFamily = client.device.family.toLowerCase();
-    if (deviceFamily.contains("tablet") || deviceFamily.equals("ipad")) return "Tablet";
-
-    String osFamily = client.os.family.toLowerCase();
-    if (osFamily.equals("ios") || osFamily.equals("android") || deviceFamily.contains("phone")
-        || deviceFamily.contains("mobile") || deviceFamily.equals("iphone")) return "Mobile";
-    return "Desktop";
-  }
 }

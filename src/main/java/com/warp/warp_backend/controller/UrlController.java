@@ -9,6 +9,7 @@ import com.warp.warp_backend.model.response.RedirectResponse;
 import com.warp.warp_backend.model.response.RestSingleResponse;
 import com.warp.warp_backend.service.UrlEventPublisher;
 import com.warp.warp_backend.service.UrlService;
+import com.warp.warp_backend.model.general.UserAgentInfo;
 import com.warp.warp_backend.util.UserAgentUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Instant;
+import java.util.Objects;
 import java.util.UUID;
 
 @RestController
@@ -42,14 +44,16 @@ public class UrlController extends BaseController {
 
   @GetMapping(path = ApiPath.REDIRECT)
   public ResponseEntity<Void> redirect(@PathVariable String shortUrl, HttpServletRequest request) {
+
+    if (isPrefetchRequest(request)) {
+      return ResponseEntity.noContent().build();
+    }
+
     long start = System.currentTimeMillis();
     RedirectResponse redirectResponse = urlService.resolveDestination(shortUrl);
 
-    ResponseEntity<Void> response = ResponseEntity.status(HttpStatus.FOUND)
-        .location(redirectResponse.getLocation())
-        .build();
-
     long latency = System.currentTimeMillis() - start;
+    UserAgentInfo uaInfo = userAgentUtil.parseUserAgent(request.getHeader("User-Agent"));
     UrlClickEvent event = UrlClickEvent.builder()
         .eventId(UUID.randomUUID())
         .urlId(redirectResponse.getUrlId())
@@ -57,13 +61,25 @@ public class UrlController extends BaseController {
         .timestamp(Instant.now())
         .countryCode(request.getHeader("X-Country-Code"))
         .referrer(userAgentUtil.parseReferrer(request.getHeader("Referer")))
-        .deviceType(userAgentUtil.parseDeviceType(request.getHeader("User-Agent")))
-        .browser(userAgentUtil.parseBrowser(request.getHeader("User-Agent")))
+        .deviceType(uaInfo.getDeviceType())
+        .browser(uaInfo.getBrowser())
         .responseLatencyMs(latency)
         .build();
+
     urlEventPublisher.publish(event);
 
-    return response;
+    return ResponseEntity.status(HttpStatus.FOUND)
+        .location(redirectResponse.getLocation())
+        .build();
+  }
+
+  private boolean isPrefetchRequest(HttpServletRequest request) {
+    String purpose = request.getHeader("Purpose");
+    String secPurpose = request.getHeader("Sec-Purpose");
+    String xMoz = request.getHeader("X-Moz");
+    return "prefetch".equalsIgnoreCase(purpose)
+        || (Objects.nonNull(secPurpose) && secPurpose.toLowerCase().startsWith("prefetch"))
+        || "prefetch".equalsIgnoreCase(xMoz);
   }
 
   @PostMapping(

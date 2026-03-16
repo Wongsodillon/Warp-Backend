@@ -25,8 +25,13 @@ public class UrlEventPublisher {
         urlClickEventKafkaTemplate.send(KafkaTopic.URL_CLICK_EVENTS, event);
     future.handle((sendResult, throwable) -> {
       if (Objects.nonNull(throwable)) {
-        LOGGER.warn("Failed to publish UrlClickEvent for shortUrl={} eventId={}: {}",
+        LOGGER.warn("[publisher:FAILED] shortUrl={} eventId={}: {}",
             event.getShortUrl(), event.getEventId(), throwable.getMessage());
+      } else {
+        LOGGER.info("[publisher:ACK] shortUrl={} eventId={} partition={} offset={}",
+            event.getShortUrl(), event.getEventId(),
+            sendResult.getRecordMetadata().partition(),
+            sendResult.getRecordMetadata().offset());
       }
       return null;
     });
