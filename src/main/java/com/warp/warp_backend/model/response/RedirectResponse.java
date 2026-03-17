@@ -14,4 +14,5 @@ import java.net.URI;
 public class RedirectResponse {
   private URI location;
   private String shortUrl;
+  private Long urlId;
 }

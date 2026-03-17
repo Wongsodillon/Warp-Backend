@@ -73,6 +73,7 @@ public class UrlCacheService {
             .destinationUrl(u.getDestinationUrl())
             .expiryDate(expiryMs)
             .isProtected(u.isProtected())
+            .urlId(u.getId())
             .build(), ttl))
         .orElseGet(() -> cacheAndReturn(key, CachedUrl.builder()
             .status(UrlStatus.EXPIRED)

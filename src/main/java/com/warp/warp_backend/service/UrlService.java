@@ -55,6 +55,7 @@ public class UrlService {
     return RedirectResponse.builder()
         .shortUrl(shortUrl)
         .location(URI.create(cached.getDestinationUrl()))
+        .urlId(cached.getUrlId())
         .build();
   }
 

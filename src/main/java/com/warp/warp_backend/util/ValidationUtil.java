@@ -25,7 +25,7 @@ public class ValidationUtil {
   private static final String SERVICE_CLASS_METHOD_NAME = "validationServiceClass";
 
   private static final List<String> EXCLUDE_PACKAGE_PREFIXES = Arrays.asList(
-      "java", "org.apache"
+      "java", "jakarta", "org.apache", "org.springframework"
   );
 
   @Autowired

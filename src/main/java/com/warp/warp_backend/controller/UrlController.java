@@ -2,11 +2,16 @@ package com.warp.warp_backend.controller;
 
 import com.warp.warp_backend.model.annotation.Validate;
 import com.warp.warp_backend.model.constant.ApiPath;
+import com.warp.warp_backend.model.event.UrlClickEvent;
 import com.warp.warp_backend.model.request.CreateUrlRequest;
 import com.warp.warp_backend.model.response.CreateUrlResponse;
 import com.warp.warp_backend.model.response.RedirectResponse;
 import com.warp.warp_backend.model.response.RestSingleResponse;
+import com.warp.warp_backend.service.UrlEventPublisher;
 import com.warp.warp_backend.service.UrlService;
+import com.warp.warp_backend.model.general.UserAgentInfo;
+import com.warp.warp_backend.util.UserAgentUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +24,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Instant;
+import java.util.Objects;
+import java.util.UUID;
+
 @RestController
 public class UrlController extends BaseController {
 
@@ -27,15 +36,50 @@ public class UrlController extends BaseController {
   @Autowired
   private UrlService urlService;
 
+  @Autowired
+  private UrlEventPublisher urlEventPublisher;
+
+  @Autowired
+  private UserAgentUtil userAgentUtil;
+
   @GetMapping(path = ApiPath.REDIRECT)
-  public ResponseEntity<Void> redirect(@PathVariable String shortUrl) {
+  public ResponseEntity<Void> redirect(@PathVariable String shortUrl, HttpServletRequest request) {
+
+    if (isPrefetchRequest(request)) {
+      return ResponseEntity.noContent().build();
+    }
+
     long start = System.currentTimeMillis();
     RedirectResponse redirectResponse = urlService.resolveDestination(shortUrl);
-//    log.info("[redirect   ] shortUrl={} {}ms total", shortUrl, System.currentTimeMillis() - start);
+
+    long latency = System.currentTimeMillis() - start;
+    UserAgentInfo uaInfo = userAgentUtil.parseUserAgent(request.getHeader("User-Agent"));
+    UrlClickEvent event = UrlClickEvent.builder()
+        .eventId(UUID.randomUUID())
+        .urlId(redirectResponse.getUrlId())
+        .shortUrl(shortUrl)
+        .timestamp(Instant.now())
+        .countryCode(request.getHeader("X-Country-Code"))
+        .referrer(userAgentUtil.parseReferrer(request.getHeader("Referer")))
+        .deviceType(uaInfo.getDeviceType())
+        .browser(uaInfo.getBrowser())
+        .responseLatencyMs(latency)
+        .build();
+
+    urlEventPublisher.publish(event);
 
     return ResponseEntity.status(HttpStatus.FOUND)
         .location(redirectResponse.getLocation())
         .build();
+  }
+
+  private boolean isPrefetchRequest(HttpServletRequest request) {
+    String purpose = request.getHeader("Purpose");
+    String secPurpose = request.getHeader("Sec-Purpose");
+    String xMoz = request.getHeader("X-Moz");
+    return "prefetch".equalsIgnoreCase(purpose)
+        || (Objects.nonNull(secPurpose) && secPurpose.toLowerCase().startsWith("prefetch"))
+        || "prefetch".equalsIgnoreCase(xMoz);
   }
 
   @PostMapping(

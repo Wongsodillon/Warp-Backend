@@ -9,10 +9,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class CachedUrl {
-    private Long urlId;
-    private UrlStatus status;
-    private String destinationUrl;
-    private Long expiryDate;
-    private boolean isProtected;
+public class UserAgentInfo {
+    private String browser;
+    private String deviceType;
 }
