@@ -1,31 +1,53 @@
 package com.warp.warp_backend.integration.url;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.warp.warp_backend.config.RedirectListener;
 import com.warp.warp_backend.integration.BaseIntegrationContextTest;
 import com.warp.warp_backend.model.FailedTestDto;
 import com.warp.warp_backend.model.TestConstant;
 import com.warp.warp_backend.model.common.ErrorCode;
 import com.warp.warp_backend.model.constant.ApiPath;
 import com.warp.warp_backend.model.constant.ConstantValue;
+import com.warp.warp_backend.model.constant.KafkaTopic;
 import com.warp.warp_backend.model.entity.Url;
+import com.warp.warp_backend.model.event.UrlClickEvent;
 import com.warp.warp_backend.model.general.CachedUrl;
 import com.warp.warp_backend.model.general.UrlStatus;
 import com.warp.warp_backend.repository.UrlRepository;
 import com.warp.warp_backend.service.UrlCacheService;
 import com.warp.warp_backend.util.CacheUtil;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
+import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.concurrent.TimeUnit;
 
+@EmbeddedKafka(
+    partitions = 1,
+    topics = {KafkaTopic.URL_CLICK_EVENTS},
+    bootstrapServersProperty = "spring.kafka.bootstrap-servers"
+)
+@TestPropertySource(properties = {
+    "spring.autoconfigure.exclude=",
+    "spring.kafka.consumer.group-id=test-group",
+    "spring.kafka.consumer.auto-offset-reset=earliest",
+    "spring.kafka.consumer.value-deserializer=org.springframework.kafka.support.serializer.JsonDeserializer",
+    "spring.kafka.consumer.properties.spring.json.trusted.packages=*",
+    "spring.kafka.consumer.properties.spring.json.value.default.type=com.warp.warp_backend.model.event.UrlClickEvent"
+})
 public class RedirectTest extends BaseIntegrationContextTest {
 
   @Autowired
@@ -39,6 +61,11 @@ public class RedirectTest extends BaseIntegrationContextTest {
 
   @Autowired
   private CacheUtil cacheUtil;
+
+  @BeforeEach
+  void setUp() {
+    RedirectListener.getUrlClickEvents().clear();
+  }
 
   @AfterEach
   void tearDown() {
@@ -61,6 +88,16 @@ public class RedirectTest extends BaseIntegrationContextTest {
     mockMvc.perform(get(ApiPath.REDIRECT, TestConstant.SHORT_URL))
         .andExpect(status().isFound())
         .andExpect(header().string("Location", TestConstant.DESTINATION_URL));
+
+    Awaitility.await()
+        .atMost(5, TimeUnit.SECONDS)
+        .until(() -> !RedirectListener.getUrlClickEvents().isEmpty());
+
+    UrlClickEvent event = RedirectListener.getUrlClickEvents().get(0);
+    assertThat(event.getShortUrl()).isEqualTo(TestConstant.SHORT_URL);
+    assertThat(event.getEventId()).isNotNull();
+    assertThat(event.getTimestamp()).isNotNull();
+    assertThat(event.getResponseLatencyMs()).isGreaterThanOrEqualTo(0);
   }
 
   @Test
