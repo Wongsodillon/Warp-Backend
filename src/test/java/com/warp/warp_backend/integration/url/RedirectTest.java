@@ -27,12 +27,15 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @EmbeddedKafka(
@@ -42,13 +45,17 @@ import java.util.concurrent.TimeUnit;
 )
 @TestPropertySource(properties = {
     "spring.autoconfigure.exclude=",
-    "spring.kafka.consumer.group-id=test-group",
-    "spring.kafka.consumer.auto-offset-reset=earliest",
+    "spring.kafka.consumer.auto-offset-reset=latest",
     "spring.kafka.consumer.value-deserializer=org.springframework.kafka.support.serializer.JsonDeserializer",
     "spring.kafka.consumer.properties.spring.json.trusted.packages=*",
     "spring.kafka.consumer.properties.spring.json.value.default.type=com.warp.warp_backend.model.event.UrlClickEvent"
 })
 public class RedirectTest extends BaseIntegrationContextTest {
+
+  @DynamicPropertySource
+  static void kafkaConsumerGroupId(DynamicPropertyRegistry registry) {
+    registry.add("spring.kafka.consumer.group-id", () -> "test-group-" + UUID.randomUUID());
+  }
 
   @Autowired
   private MockMvc mockMvc;
