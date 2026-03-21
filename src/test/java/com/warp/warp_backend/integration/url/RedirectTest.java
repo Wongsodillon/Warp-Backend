@@ -113,8 +113,7 @@ public class RedirectTest extends BaseIntegrationContextTest {
 
   @Test
   void redirect_activeCachedUrl_returns302() throws Exception {
-    cacheUtil.set(
-        ConstantValue.URL_CACHE_PREFIX + TestConstant.SHORT_URL,
+    cacheUtil.set(ConstantValue.URL_CACHE_PREFIX + TestConstant.SHORT_URL,
         CachedUrl.builder()
             .status(UrlStatus.ACTIVE)
             .destinationUrl(TestConstant.DESTINATION_URL)
