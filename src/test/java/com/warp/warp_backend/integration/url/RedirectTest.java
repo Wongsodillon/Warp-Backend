@@ -12,6 +12,7 @@ import com.warp.warp_backend.model.TestConstant;
 import com.warp.warp_backend.model.common.ErrorCode;
 import com.warp.warp_backend.model.constant.ApiPath;
 import com.warp.warp_backend.model.constant.ConstantValue;
+import com.warp.warp_backend.model.constant.HttpHeader;
 import com.warp.warp_backend.model.constant.KafkaTopic;
 import com.warp.warp_backend.model.entity.Url;
 import com.warp.warp_backend.model.event.UrlClickEvent;
@@ -22,6 +23,7 @@ import com.warp.warp_backend.service.UrlCacheService;
 import com.warp.warp_backend.util.CacheUtil;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -92,9 +94,10 @@ public class RedirectTest extends BaseIntegrationContextTest {
   void redirect_validShortUrl_returns302() throws Exception {
     urlRepository.save(buildUrl());
 
-    mockMvc.perform(get(ApiPath.REDIRECT, TestConstant.SHORT_URL))
+    mockMvc.perform(get(ApiPath.REDIRECT, TestConstant.SHORT_URL)
+            .header(HttpHeader.CF_IP_COUNTRY, "US"))
         .andExpect(status().isFound())
-        .andExpect(header().string("Location", TestConstant.DESTINATION_URL));
+        .andExpect(header().string(HttpHeader.LOCATION, TestConstant.DESTINATION_URL));
 
     Awaitility.await()
         .atMost(5, TimeUnit.SECONDS)
@@ -104,13 +107,13 @@ public class RedirectTest extends BaseIntegrationContextTest {
     assertThat(event.getShortUrl()).isEqualTo(TestConstant.SHORT_URL);
     assertThat(event.getEventId()).isNotNull();
     assertThat(event.getTimestamp()).isNotNull();
+    Assertions.assertEquals("US", event.getCountryCode());
     assertThat(event.getResponseLatencyMs()).isGreaterThanOrEqualTo(0);
   }
 
   @Test
   void redirect_activeCachedUrl_returns302() throws Exception {
-    cacheUtil.set(
-        ConstantValue.URL_CACHE_PREFIX + TestConstant.SHORT_URL,
+    cacheUtil.set(ConstantValue.URL_CACHE_PREFIX + TestConstant.SHORT_URL,
         CachedUrl.builder()
             .status(UrlStatus.ACTIVE)
             .destinationUrl(TestConstant.DESTINATION_URL)
@@ -119,7 +122,7 @@ public class RedirectTest extends BaseIntegrationContextTest {
 
     mockMvc.perform(get(ApiPath.REDIRECT, TestConstant.SHORT_URL))
         .andExpect(status().isFound())
-        .andExpect(header().string("Location", TestConstant.DESTINATION_URL));
+        .andExpect(header().string(HttpHeader.LOCATION, TestConstant.DESTINATION_URL));
   }
 
   @Test
@@ -217,5 +220,21 @@ public class RedirectTest extends BaseIntegrationContextTest {
         .errorCode(ErrorCode.URL_EXPIRED)
         .useAuth(false)
         .build());
+  }
+
+  @Test
+  @Transactional
+  void redirect_noGeoHeaders_loopbackIp_countryCodeIsNull() throws Exception {
+    urlRepository.save(buildUrl());
+
+    mockMvc.perform(get(ApiPath.REDIRECT, TestConstant.SHORT_URL))
+        .andExpect(status().isFound());
+
+    Awaitility.await()
+        .atMost(5, TimeUnit.SECONDS)
+        .until(() -> !RedirectListener.getUrlClickEvents().isEmpty());
+
+    UrlClickEvent event = RedirectListener.getUrlClickEvents().get(0);
+    assertThat(event.getCountryCode()).isNull();
   }
 }
