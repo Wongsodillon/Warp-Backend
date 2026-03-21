@@ -115,6 +115,37 @@ public class RedirectTest extends BaseIntegrationContextTest {
   }
 
   @Test
+  @Transactional
+  void redirect_protectedUrl_returns302ToPasswordPage() throws Exception {
+    urlRepository.save(buildProtectedUrl());
+
+    mockMvc.perform(get(ApiPath.REDIRECT, TestConstant.PROTECTED_SHORT_URL))
+        .andExpect(status().isFound())
+        .andExpect(header().string(HttpHeader.LOCATION,
+            containsString("/" + TestConstant.PROTECTED_SHORT_URL + ApiPath.PASSWORD)));
+
+    Awaitility.await()
+        .atMost(5, TimeUnit.SECONDS)
+        .until(() -> !RedirectListener.getUrlClickEvents().isEmpty());
+
+    UrlClickEvent event = RedirectListener.getUrlClickEvents().get(0);
+    assertThat(event.getShortUrl()).isEqualTo(TestConstant.PROTECTED_SHORT_URL);
+    assertThat(event.getEventId()).isNotNull();
+    assertThat(event.getTimestamp()).isNotNull();
+    assertThat(event.getResponseLatencyMs()).isGreaterThanOrEqualTo(0);
+  }
+
+  private Url buildProtectedUrl() {
+    return Url.builder()
+        .id(urlRepository.getNextId())
+        .shortUrl(TestConstant.PROTECTED_SHORT_URL)
+        .destinationUrl(TestConstant.DESTINATION_URL)
+        .isProtected(true)
+        .password(passwordEncoder.encode(TestConstant.TEST_PASSWORD))
+        .build();
+  }
+
+  @Test
   void redirect_activeCachedUrl_returns302() throws Exception {
     cacheUtil.set(ConstantValue.URL_CACHE_PREFIX + TestConstant.SHORT_URL,
         CachedUrl.builder()
@@ -132,7 +163,7 @@ public class RedirectTest extends BaseIntegrationContextTest {
   void redirect_nonExistentShortUrl_returns302ToNotFound() throws Exception {
     mockMvc.perform(get(ApiPath.REDIRECT, TestConstant.SHORT_URL))
         .andExpect(status().isFound())
-        .andExpect(header().string(HttpHeader.LOCATION, containsString("/not-found")));
+        .andExpect(header().string(HttpHeader.LOCATION, containsString(ApiPath.NOT_FOUND)));
   }
 
   @Test
@@ -144,7 +175,7 @@ public class RedirectTest extends BaseIntegrationContextTest {
 
     mockMvc.perform(get(ApiPath.REDIRECT, TestConstant.SHORT_URL))
         .andExpect(status().isFound())
-        .andExpect(header().string(HttpHeader.LOCATION, containsString("/not-found")));
+        .andExpect(header().string(HttpHeader.LOCATION, containsString(ApiPath.NOT_FOUND)));
   }
 
   @Test
@@ -156,7 +187,7 @@ public class RedirectTest extends BaseIntegrationContextTest {
 
     mockMvc.perform(get(ApiPath.REDIRECT, TestConstant.SHORT_URL))
         .andExpect(status().isFound())
-        .andExpect(header().string(HttpHeader.LOCATION, containsString("/not-found")));
+        .andExpect(header().string(HttpHeader.LOCATION, containsString(ApiPath.NOT_FOUND)));
   }
 
   @Test
@@ -168,7 +199,7 @@ public class RedirectTest extends BaseIntegrationContextTest {
 
     mockMvc.perform(get(ApiPath.REDIRECT, TestConstant.SHORT_URL))
         .andExpect(status().isFound())
-        .andExpect(header().string(HttpHeader.LOCATION, containsString("/not-found")));
+        .andExpect(header().string(HttpHeader.LOCATION, containsString(ApiPath.NOT_FOUND)));
   }
 
   @Test
@@ -180,7 +211,7 @@ public class RedirectTest extends BaseIntegrationContextTest {
 
     mockMvc.perform(get(ApiPath.REDIRECT, TestConstant.SHORT_URL))
         .andExpect(status().isFound())
-        .andExpect(header().string(HttpHeader.LOCATION, containsString("/expired")));
+        .andExpect(header().string(HttpHeader.LOCATION, containsString(ApiPath.EXPIRED)));
   }
 
   @Test
@@ -192,28 +223,7 @@ public class RedirectTest extends BaseIntegrationContextTest {
 
     mockMvc.perform(get(ApiPath.REDIRECT, TestConstant.SHORT_URL))
         .andExpect(status().isFound())
-        .andExpect(header().string(HttpHeader.LOCATION, containsString("/expired")));
-  }
-
-  @Test
-  @Transactional
-  void redirect_protectedUrl_returns302ToPasswordPage() throws Exception {
-    urlRepository.save(buildProtectedUrl());
-
-    mockMvc.perform(get(ApiPath.REDIRECT, TestConstant.PROTECTED_SHORT_URL))
-        .andExpect(status().isFound())
-        .andExpect(header().string(HttpHeader.LOCATION,
-            containsString("/" + TestConstant.PROTECTED_SHORT_URL + "/protected")));
-  }
-
-  private Url buildProtectedUrl() {
-    return Url.builder()
-        .id(urlRepository.getNextId())
-        .shortUrl(TestConstant.PROTECTED_SHORT_URL)
-        .destinationUrl(TestConstant.DESTINATION_URL)
-        .isProtected(true)
-        .password(passwordEncoder.encode(TestConstant.TEST_PASSWORD))
-        .build();
+        .andExpect(header().string(HttpHeader.LOCATION, containsString(ApiPath.EXPIRED)));
   }
 
   @Test

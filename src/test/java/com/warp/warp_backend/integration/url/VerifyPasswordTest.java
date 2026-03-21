@@ -78,6 +78,23 @@ public class VerifyPasswordTest extends BaseIntegrationContextTest {
   }
 
   @Test
+  @Transactional
+  void verify_emptyPassword_returns401() throws Exception {
+    urlRepository.save(buildProtectedUrl());
+
+    runFailedTest(FailedTestDto.builder()
+        .mockMvc(mockMvc)
+        .httpMethod(HttpMethod.POST)
+        .path(ApiPath.VERIFY_PASSWORD)
+        .pathVariables(new Object[]{TestConstant.PROTECTED_SHORT_URL})
+        .body(VerifyPasswordRequest.builder().build())
+        .errorCode(ErrorCode.INVALID_PASSWORD)
+        .httpStatus(HttpStatus.UNAUTHORIZED)
+        .useAuth(false)
+        .build());
+  }
+
+  @Test
   void verify_urlNotFound_returns404() throws Exception {
     runFailedTest(FailedTestDto.builder()
         .mockMvc(mockMvc)

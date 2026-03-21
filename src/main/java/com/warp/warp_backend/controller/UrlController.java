@@ -97,12 +97,12 @@ public class UrlController extends BaseController {
         || PREFETCH.equalsIgnoreCase(xMoz);
   }
 
-  @GetMapping(path = "/not-found")
+  @GetMapping(path = ApiPath.NOT_FOUND)
   public ResponseEntity<Void> notFound() {
     return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
   }
 
-  @GetMapping(path = "/expired")
+  @GetMapping(path = ApiPath.EXPIRED)
   public ResponseEntity<Void> expired() {
     return ResponseEntity.status(HttpStatus.GONE).build();
   }

@@ -1,6 +1,7 @@
 package com.warp.warp_backend.service;
 
 import com.warp.warp_backend.model.common.ErrorCode;
+import com.warp.warp_backend.model.constant.ApiPath;
 import com.warp.warp_backend.model.entity.Url;
 import com.warp.warp_backend.model.exception.BaseException;
 import com.warp.warp_backend.model.exception.NotFoundException;
@@ -53,17 +54,19 @@ public class UrlService {
 
     if (cached.getStatus() == UrlStatus.NOT_FOUND) {
       return RedirectResponse.builder()
-          .location(URI.create(applicationProperties.getFrontendUrl() + "/not-found"))
+          .location(URI.create(applicationProperties.getFrontendUrl() + ApiPath.NOT_FOUND))
           .build();
     }
     if (cached.getStatus() == UrlStatus.EXPIRED) {
       return RedirectResponse.builder()
-          .location(URI.create(applicationProperties.getFrontendUrl() + "/expired"))
+          .location(URI.create(applicationProperties.getFrontendUrl() + ApiPath.EXPIRED))
           .build();
     }
     if (cached.isProtected()) {
       return RedirectResponse.builder()
-          .location(URI.create(applicationProperties.getFrontendUrl() + "/" + cached.getShortUrl() + "/protected"))
+          .shortUrl(shortUrl)
+          .urlId(cached.getUrlId())
+          .location(URI.create(applicationProperties.getFrontendUrl() + "/" + cached.getShortUrl() + ApiPath.PASSWORD))
           .build();
     }
 
@@ -107,11 +110,13 @@ public class UrlService {
   public String verifyPassword(String shortUrl, String submittedPassword) {
     Url url = urlRepository.findByShortUrl(shortUrl)
         .orElseThrow(() -> new NotFoundException(ErrorCode.DESTINATION_URL_NOT_FOUND));
-
+    if (Objects.isNull(submittedPassword) || submittedPassword.isBlank()) {
+      throw new BaseException(ErrorCode.INVALID_PASSWORD);
+    }
     if (Objects.nonNull(url.getDeletedDate()) || url.isDisabled()) {
       throw new NotFoundException(ErrorCode.DESTINATION_URL_NOT_FOUND);
     }
-    if (Objects.nonNull(url.getExpiryDate()) && Instant.now().isAfter(url.getExpiryDate())) {
+    if (Objects.nonNull(url.getExpiryDate()) && !Instant.now().isBefore(url.getExpiryDate())) {
       throw new NotFoundException(ErrorCode.DESTINATION_URL_NOT_FOUND);
     }
     if (!passwordEncoder.matches(submittedPassword, url.getPassword())) {
