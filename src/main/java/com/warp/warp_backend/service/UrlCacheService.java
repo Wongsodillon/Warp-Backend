@@ -102,6 +102,7 @@ public class UrlCacheService {
             .destinationUrl(u.getDestinationUrl())
             .expiryDate(expiryMs)
             .isProtected(u.isProtected())
+            .shortUrl(u.getShortUrl())
             .urlId(u.getId())
             .build(), ttl))
         .orElseGet(() -> cacheAndReturn(key, CachedUrl.builder()

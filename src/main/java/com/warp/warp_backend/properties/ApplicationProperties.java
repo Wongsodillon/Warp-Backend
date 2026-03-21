@@ -16,4 +16,7 @@ public class ApplicationProperties {
 
   @Value("${application.domain.url}")
   private String domainUrl;
+
+  @Value("${application.frontend.url}")
+  private String frontendUrl;
 }

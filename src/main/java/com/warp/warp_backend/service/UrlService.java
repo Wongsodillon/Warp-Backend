@@ -15,10 +15,13 @@ import com.warp.warp_backend.service.util.UrlServiceUtil;
 import com.warp.warp_backend.util.Base62;
 import com.warp.warp_backend.util.UrlValidationUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
+import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
@@ -42,14 +45,26 @@ public class UrlService {
   @Autowired
   private UrlCacheService urlCacheService;
 
+  @Autowired
+  private PasswordEncoder passwordEncoder;
+
   public RedirectResponse resolveDestination(String shortUrl) {
     CachedUrl cached = urlCacheService.findCachedUrl(shortUrl);
 
     if (cached.getStatus() == UrlStatus.NOT_FOUND) {
-      throw new NotFoundException(ErrorCode.DESTINATION_URL_NOT_FOUND);
+      return RedirectResponse.builder()
+          .location(URI.create(applicationProperties.getFrontendUrl() + "/not-found"))
+          .build();
     }
     if (cached.getStatus() == UrlStatus.EXPIRED) {
-      throw new BaseException(ErrorCode.URL_EXPIRED);
+      return RedirectResponse.builder()
+          .location(URI.create(applicationProperties.getFrontendUrl() + "/expired"))
+          .build();
+    }
+    if (cached.isProtected()) {
+      return RedirectResponse.builder()
+          .location(URI.create(applicationProperties.getFrontendUrl() + "/" + cached.getShortUrl() + "/protected"))
+          .build();
     }
 
     return RedirectResponse.builder()
@@ -67,6 +82,8 @@ public class UrlService {
 
     String shortUrl = Base62.encode(obfuscated);
 
+    boolean isProtected = Objects.nonNull(request.getPassword()) && !request.getPassword().isBlank();
+
     Url url = Url.builder()
         .id(id)
         .userId(currentUserService.getCurrentUserId())
@@ -75,6 +92,8 @@ public class UrlService {
         .expiryDate(Optional.ofNullable(request.getExpiresAt())
             .map(OffsetDateTime::toInstant)
             .orElse(null))
+        .isProtected(isProtected)
+        .password(isProtected ? passwordEncoder.encode(request.getPassword()) : null)
         .build();
 
     urlRepository.save(url);
@@ -83,5 +102,22 @@ public class UrlService {
         .shortUrl(urlServiceUtil.formatUrl(shortUrl))
         .destinationUrl(request.getDestinationUrl())
         .build();
+  }
+
+  public String verifyPassword(String shortUrl, String submittedPassword) {
+    Url url = urlRepository.findByShortUrl(shortUrl)
+        .orElseThrow(() -> new NotFoundException(ErrorCode.DESTINATION_URL_NOT_FOUND));
+
+    if (Objects.nonNull(url.getDeletedDate()) || url.isDisabled()) {
+      throw new NotFoundException(ErrorCode.DESTINATION_URL_NOT_FOUND);
+    }
+    if (Objects.nonNull(url.getExpiryDate()) && Instant.now().isAfter(url.getExpiryDate())) {
+      throw new NotFoundException(ErrorCode.DESTINATION_URL_NOT_FOUND);
+    }
+    if (!passwordEncoder.matches(submittedPassword, url.getPassword())) {
+      throw new BaseException(ErrorCode.INVALID_PASSWORD);
+    }
+
+    return url.getDestinationUrl();
   }
 }
