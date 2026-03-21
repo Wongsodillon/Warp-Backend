@@ -47,9 +47,9 @@ public class UrlCacheService {
           && System.currentTimeMillis() >= l1Entry.getExpiryDate()) {
         // Stale ACTIVE entry — URL expired within the 5-min L1 window
         urlL1Cache.invalidate(key);
-        log.info("[L1 STALE evicted] shortUrl={}", shortUrl);
+        log.debug("[L1 STALE evicted] shortUrl={}", shortUrl);
       } else {
-        log.info("[L1 HIT] shortUrl={} status={}", shortUrl, l1Entry.getStatus());
+        log.debug("[L1 HIT] shortUrl={} status={}", shortUrl, l1Entry.getStatus());
         meterRegistry.counter("url.cache.hits").increment();
         meterRegistry.counter("url.cache.hits", "layer", "l1").increment();
         return l1Entry;
@@ -59,7 +59,7 @@ public class UrlCacheService {
     // ── L2 CHECK (Redis, circuit-breaker protected) ──
     CachedUrl l2Entry = cacheUtil.get(key);
     if (Objects.nonNull(l2Entry)) {
-      log.info("[L2 HIT] shortUrl={} status={}", shortUrl, l2Entry.getStatus());
+      log.debug("[L2 HIT] shortUrl={} status={}", shortUrl, l2Entry.getStatus());
       meterRegistry.counter("url.cache.hits").increment();
       meterRegistry.counter("url.cache.hits", "layer", "l2").increment();
       urlL1Cache.put(key, l2Entry);
@@ -67,7 +67,7 @@ public class UrlCacheService {
     }
 
     // ── BOTH MISS — go to DB ──
-    log.info("[cache MISS] shortUrl={}", shortUrl);
+    log.debug("[cache MISS] shortUrl={}", shortUrl);
     meterRegistry.counter("url.cache.misses").increment();
 
     return urlRepository.findByShortUrl(shortUrl)
@@ -77,7 +77,7 @@ public class UrlCacheService {
               .status(UrlStatus.NOT_FOUND)
               .build();
           urlL1Cache.put(key, notFound);
-          log.info("[L1 SET NOT_FOUND] key={}", key);
+          log.debug("[L1 SET NOT_FOUND] key={}", key);
           return notFound;
         });
   }
@@ -88,7 +88,7 @@ public class UrlCacheService {
           .status(UrlStatus.NOT_FOUND)
           .build();
       urlL1Cache.put(key, notFound);
-      log.info("[L1 SET NOT_FOUND deleted/disabled] key={}", key);
+      log.debug("[L1 SET NOT_FOUND deleted/disabled] key={}", key);
       return notFound;
     }
     if (Objects.nonNull(u.getExpiryDate()) && System.currentTimeMillis() >= u.getExpiryDate().toEpochMilli()) {
@@ -127,7 +127,7 @@ public class UrlCacheService {
   private CachedUrl cacheAndReturn(String key, CachedUrl entry, Duration redisTtl) {
     cacheUtil.set(key, entry, redisTtl);
     urlL1Cache.put(key, entry);
-    log.info("[cache SET {}] key={} ttl={}", entry.getStatus(), key, redisTtl);
+    log.debug("[cache SET {}] key={} ttl={}", entry.getStatus(), key, redisTtl);
     return entry;
   }
 
@@ -135,6 +135,6 @@ public class UrlCacheService {
     String key = ConstantValue.URL_CACHE_PREFIX + shortUrl;
     urlL1Cache.invalidate(key);
     cacheUtil.delete(key);
-    log.info("[cache EVICT] key={}", key);
+    log.debug("[cache EVICT] key={}", key);
   }
 }

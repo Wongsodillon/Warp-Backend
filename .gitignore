@@ -5,6 +5,7 @@ target/
 !**/src/test/**/target/
 
 src/main/resources/application-local.properties
+src/main/resources/GeoLite2-Country.mmdb
 
 ### STS ###
 .apt_generated

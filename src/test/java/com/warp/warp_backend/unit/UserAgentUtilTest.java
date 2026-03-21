@@ -1,12 +1,17 @@
 package com.warp.warp_backend.unit;
 
+import com.warp.warp_backend.model.constant.DeviceType;
 import com.warp.warp_backend.model.general.UserAgentInfo;
 import com.warp.warp_backend.util.UserAgentUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class UserAgentUtilTest {
 
@@ -37,43 +42,43 @@ public class UserAgentUtilTest {
   @Test
   void parseUserAgent_null_returnsUnknown() {
     UserAgentInfo result = userAgentUtil.parseUserAgent(null);
-    Assertions.assertEquals("Unknown", result.getBrowser());
-    Assertions.assertEquals("Unknown", result.getDeviceType());
+    Assertions.assertEquals(DeviceType.UNKNOWN, result.getBrowser());
+    Assertions.assertEquals(DeviceType.UNKNOWN, result.getDeviceType());
   }
 
   @Test
   void parseUserAgent_desktopChrome_returnsChromeDesktop() {
     UserAgentInfo result = userAgentUtil.parseUserAgent(CHROME_DESKTOP);
     Assertions.assertEquals("Chrome", result.getBrowser());
-    Assertions.assertEquals("Desktop", result.getDeviceType());
+    Assertions.assertEquals(DeviceType.DESKTOP, result.getDeviceType());
   }
 
   @Test
   void parseUserAgent_desktopFirefox_returnsFirefoxDesktop() {
     UserAgentInfo result = userAgentUtil.parseUserAgent(FIREFOX_DESKTOP);
     Assertions.assertEquals("Firefox", result.getBrowser());
-    Assertions.assertEquals("Desktop", result.getDeviceType());
+    Assertions.assertEquals(DeviceType.DESKTOP, result.getDeviceType());
   }
 
   @Test
   void parseUserAgent_iphone_returnsMobileSafariMobile() {
     UserAgentInfo result = userAgentUtil.parseUserAgent(IPHONE_SAFARI);
     Assertions.assertEquals("Mobile Safari", result.getBrowser());
-    Assertions.assertEquals("Mobile", result.getDeviceType());
+    Assertions.assertEquals(DeviceType.MOBILE, result.getDeviceType());
   }
 
   @Test
   void parseUserAgent_androidChrome_returnsChromesMobile() {
     UserAgentInfo result = userAgentUtil.parseUserAgent(ANDROID_CHROME);
     Assertions.assertEquals("Chrome Mobile", result.getBrowser());
-    Assertions.assertEquals("Mobile", result.getDeviceType());
+    Assertions.assertEquals(DeviceType.MOBILE, result.getDeviceType());
   }
 
   @Test
   void parseUserAgent_ipad_returnsMobileSafariTablet() {
     UserAgentInfo result = userAgentUtil.parseUserAgent(IPAD_SAFARI);
     Assertions.assertEquals("Mobile Safari", result.getBrowser());
-    Assertions.assertEquals("Tablet", result.getDeviceType());
+    Assertions.assertEquals(DeviceType.TABLET, result.getDeviceType());
   }
 
   // --- parseReferrer ---
@@ -203,5 +208,38 @@ public class UserAgentUtilTest {
   @Test
   void parseReferrer_urlWithUtmParams_returnsHost() {
     Assertions.assertEquals("example.com", userAgentUtil.parseReferrer("https://example.com/?utm_source=google&utm_medium=cpc&utm_campaign=brand"));
+  }
+
+  // --- extractClientIp ---
+
+  @Test
+  void extractClientIp_xffSingleIp_returnsThatIp() {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getHeader("X-Forwarded-For")).thenReturn("203.0.113.1");
+    Assertions.assertEquals("203.0.113.1", userAgentUtil.extractClientIp(request));
+  }
+
+  @Test
+  void extractClientIp_xffMultiProxy_returnsLeftmost() {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getHeader("X-Forwarded-For")).thenReturn("203.0.113.1, 70.41.3.18, 150.172.238.178");
+    Assertions.assertEquals("203.0.113.1", userAgentUtil.extractClientIp(request));
+  }
+
+  @Test
+  void extractClientIp_noXff_xRealIpFallback() {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getHeader("X-Forwarded-For")).thenReturn(null);
+    when(request.getHeader("X-Real-IP")).thenReturn("1.2.3.4");
+    Assertions.assertEquals("1.2.3.4", userAgentUtil.extractClientIp(request));
+  }
+
+  @Test
+  void extractClientIp_noHeaders_remoteAddrFallback() {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getHeader("X-Forwarded-For")).thenReturn(null);
+    when(request.getHeader("X-Real-IP")).thenReturn(null);
+    when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+    Assertions.assertEquals("127.0.0.1", userAgentUtil.extractClientIp(request));
   }
 }

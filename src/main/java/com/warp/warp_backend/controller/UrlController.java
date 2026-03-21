@@ -2,11 +2,14 @@ package com.warp.warp_backend.controller;
 
 import com.warp.warp_backend.model.annotation.Validate;
 import com.warp.warp_backend.model.constant.ApiPath;
+import com.warp.warp_backend.model.constant.GeoConstant;
+import com.warp.warp_backend.model.constant.HttpHeader;
 import com.warp.warp_backend.model.event.UrlClickEvent;
 import com.warp.warp_backend.model.request.CreateUrlRequest;
 import com.warp.warp_backend.model.response.CreateUrlResponse;
 import com.warp.warp_backend.model.response.RedirectResponse;
 import com.warp.warp_backend.model.response.RestSingleResponse;
+import com.warp.warp_backend.service.GeoLocationService;
 import com.warp.warp_backend.service.UrlEventPublisher;
 import com.warp.warp_backend.service.UrlService;
 import com.warp.warp_backend.model.general.UserAgentInfo;
@@ -32,6 +35,7 @@ import java.util.UUID;
 public class UrlController extends BaseController {
 
   private static final Logger log = LoggerFactory.getLogger(UrlController.class);
+  private static final String PREFETCH = "prefetch";
 
   @Autowired
   private UrlService urlService;
@@ -41,6 +45,9 @@ public class UrlController extends BaseController {
 
   @Autowired
   private UserAgentUtil userAgentUtil;
+
+  @Autowired
+  private GeoLocationService geoLocationService;
 
   @GetMapping(path = ApiPath.REDIRECT)
   public ResponseEntity<Void> redirect(@PathVariable String shortUrl, HttpServletRequest request) {
@@ -53,14 +60,18 @@ public class UrlController extends BaseController {
     RedirectResponse redirectResponse = urlService.resolveDestination(shortUrl);
 
     long latency = System.currentTimeMillis() - start;
-    UserAgentInfo uaInfo = userAgentUtil.parseUserAgent(request.getHeader("User-Agent"));
+    UserAgentInfo uaInfo = userAgentUtil.parseUserAgent(request.getHeader(HttpHeader.USER_AGENT));
+    String cfCountry = request.getHeader(HttpHeader.CF_IP_COUNTRY);
+    String countryCode = (cfCountry != null && !cfCountry.isBlank() && !cfCountry.equals(GeoConstant.CF_UNKNOWN))
+        ? cfCountry
+        : geoLocationService.resolveCountryCode(userAgentUtil.extractClientIp(request)).orElse(null);
     UrlClickEvent event = UrlClickEvent.builder()
         .eventId(UUID.randomUUID())
         .urlId(redirectResponse.getUrlId())
         .shortUrl(shortUrl)
         .timestamp(Instant.now())
-        .countryCode(request.getHeader("X-Country-Code"))
-        .referrer(userAgentUtil.parseReferrer(request.getHeader("Referer")))
+        .countryCode(countryCode)
+        .referrer(userAgentUtil.parseReferrer(request.getHeader(HttpHeader.REFERER)))
         .deviceType(uaInfo.getDeviceType())
         .browser(uaInfo.getBrowser())
         .responseLatencyMs(latency)
@@ -74,12 +85,12 @@ public class UrlController extends BaseController {
   }
 
   private boolean isPrefetchRequest(HttpServletRequest request) {
-    String purpose = request.getHeader("Purpose");
-    String secPurpose = request.getHeader("Sec-Purpose");
-    String xMoz = request.getHeader("X-Moz");
-    return "prefetch".equalsIgnoreCase(purpose)
-        || (Objects.nonNull(secPurpose) && secPurpose.toLowerCase().startsWith("prefetch"))
-        || "prefetch".equalsIgnoreCase(xMoz);
+    String purpose = request.getHeader(HttpHeader.PURPOSE);
+    String secPurpose = request.getHeader(HttpHeader.SEC_PURPOSE);
+    String xMoz = request.getHeader(HttpHeader.X_MOZ);
+    return PREFETCH.equalsIgnoreCase(purpose)
+        || (Objects.nonNull(secPurpose) && secPurpose.toLowerCase().startsWith(PREFETCH))
+        || PREFETCH.equalsIgnoreCase(xMoz);
   }
 
   @PostMapping(

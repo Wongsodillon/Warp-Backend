@@ -22,6 +22,7 @@ import com.warp.warp_backend.service.UrlCacheService;
 import com.warp.warp_backend.util.CacheUtil;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -92,7 +93,8 @@ public class RedirectTest extends BaseIntegrationContextTest {
   void redirect_validShortUrl_returns302() throws Exception {
     urlRepository.save(buildUrl());
 
-    mockMvc.perform(get(ApiPath.REDIRECT, TestConstant.SHORT_URL))
+    mockMvc.perform(get(ApiPath.REDIRECT, TestConstant.SHORT_URL)
+            .header("CF-IPCountry", "US"))
         .andExpect(status().isFound())
         .andExpect(header().string("Location", TestConstant.DESTINATION_URL));
 
@@ -104,6 +106,7 @@ public class RedirectTest extends BaseIntegrationContextTest {
     assertThat(event.getShortUrl()).isEqualTo(TestConstant.SHORT_URL);
     assertThat(event.getEventId()).isNotNull();
     assertThat(event.getTimestamp()).isNotNull();
+    Assertions.assertEquals("US", event.getCountryCode());
     assertThat(event.getResponseLatencyMs()).isGreaterThanOrEqualTo(0);
   }
 
@@ -217,5 +220,21 @@ public class RedirectTest extends BaseIntegrationContextTest {
         .errorCode(ErrorCode.URL_EXPIRED)
         .useAuth(false)
         .build());
+  }
+
+  @Test
+  @Transactional
+  void redirect_noGeoHeaders_loopbackIp_countryCodeIsNull() throws Exception {
+    urlRepository.save(buildUrl());
+
+    mockMvc.perform(get(ApiPath.REDIRECT, TestConstant.SHORT_URL))
+        .andExpect(status().isFound());
+
+    Awaitility.await()
+        .atMost(5, TimeUnit.SECONDS)
+        .until(() -> !RedirectListener.getUrlClickEvents().isEmpty());
+
+    UrlClickEvent event = RedirectListener.getUrlClickEvents().get(0);
+    assertThat(event.getCountryCode()).isNull();
   }
 }
