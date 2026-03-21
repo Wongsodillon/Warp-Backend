@@ -13,6 +13,7 @@ public enum ErrorCode {
   DESTINATION_URL_IS_INVALID(400, "ERR-400003", "Destination URL is invalid"),
 
   UNAUTHENTICATED(401,"ERR-401001", "Unauthenticated User"),
+  INVALID_PASSWORD(401, "ERR-401002", "Invalid password"),
 
   DESTINATION_URL_NOT_FOUND(404, "ERR-404001", "URL not found"),
 

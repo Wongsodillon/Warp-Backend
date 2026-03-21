@@ -1,15 +1,14 @@
 package com.warp.warp_backend.integration.url;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.warp.warp_backend.config.RedirectListener;
 import com.warp.warp_backend.integration.BaseIntegrationContextTest;
-import com.warp.warp_backend.model.FailedTestDto;
 import com.warp.warp_backend.model.TestConstant;
-import com.warp.warp_backend.model.common.ErrorCode;
 import com.warp.warp_backend.model.constant.ApiPath;
 import com.warp.warp_backend.model.constant.ConstantValue;
 import com.warp.warp_backend.model.constant.HttpHeader;
@@ -21,13 +20,13 @@ import com.warp.warp_backend.model.general.UrlStatus;
 import com.warp.warp_backend.repository.UrlRepository;
 import com.warp.warp_backend.service.UrlCacheService;
 import com.warp.warp_backend.util.CacheUtil;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpMethod;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -71,6 +70,9 @@ public class RedirectTest extends BaseIntegrationContextTest {
   @Autowired
   private CacheUtil cacheUtil;
 
+  @Autowired
+  private PasswordEncoder passwordEncoder;
+
   @BeforeEach
   void setUp() {
     RedirectListener.getUrlClickEvents().clear();
@@ -79,6 +81,7 @@ public class RedirectTest extends BaseIntegrationContextTest {
   @AfterEach
   void tearDown() {
     urlCacheService.evictUrl(TestConstant.SHORT_URL);
+    urlCacheService.evictUrl(TestConstant.PROTECTED_SHORT_URL);
   }
 
   private Url buildUrl() {
@@ -112,6 +115,37 @@ public class RedirectTest extends BaseIntegrationContextTest {
   }
 
   @Test
+  @Transactional
+  void redirect_protectedUrl_returns302ToPasswordPage() throws Exception {
+    urlRepository.save(buildProtectedUrl());
+
+    mockMvc.perform(get(ApiPath.REDIRECT, TestConstant.PROTECTED_SHORT_URL))
+        .andExpect(status().isFound())
+        .andExpect(header().string(HttpHeader.LOCATION,
+            containsString("/" + TestConstant.PROTECTED_SHORT_URL + ApiPath.PASSWORD)));
+
+    Awaitility.await()
+        .atMost(5, TimeUnit.SECONDS)
+        .until(() -> !RedirectListener.getUrlClickEvents().isEmpty());
+
+    UrlClickEvent event = RedirectListener.getUrlClickEvents().get(0);
+    assertThat(event.getShortUrl()).isEqualTo(TestConstant.PROTECTED_SHORT_URL);
+    assertThat(event.getEventId()).isNotNull();
+    assertThat(event.getTimestamp()).isNotNull();
+    assertThat(event.getResponseLatencyMs()).isGreaterThanOrEqualTo(0);
+  }
+
+  private Url buildProtectedUrl() {
+    return Url.builder()
+        .id(urlRepository.getNextId())
+        .shortUrl(TestConstant.PROTECTED_SHORT_URL)
+        .destinationUrl(TestConstant.DESTINATION_URL)
+        .isProtected(true)
+        .password(passwordEncoder.encode(TestConstant.TEST_PASSWORD))
+        .build();
+  }
+
+  @Test
   void redirect_activeCachedUrl_returns302() throws Exception {
     cacheUtil.set(ConstantValue.URL_CACHE_PREFIX + TestConstant.SHORT_URL,
         CachedUrl.builder()
@@ -126,100 +160,70 @@ public class RedirectTest extends BaseIntegrationContextTest {
   }
 
   @Test
-  void redirect_nonExistentShortUrl_returns404() throws Exception {
-    runFailedTest(FailedTestDto.builder()
-        .mockMvc(mockMvc)
-        .httpMethod(HttpMethod.GET)
-        .path(ApiPath.REDIRECT)
-        .pathVariables(new Object[]{TestConstant.SHORT_URL})
-        .errorCode(ErrorCode.DESTINATION_URL_NOT_FOUND)
-        .useAuth(false)
-        .build());
+  void redirect_nonExistentShortUrl_returns302ToNotFound() throws Exception {
+    mockMvc.perform(get(ApiPath.REDIRECT, TestConstant.SHORT_URL))
+        .andExpect(status().isFound())
+        .andExpect(header().string(HttpHeader.LOCATION, containsString(ApiPath.NOT_FOUND)));
   }
 
   @Test
   @Transactional
-  void redirect_deletedUrl_returns404() throws Exception {
+  void redirect_deletedUrl_returns302ToNotFound() throws Exception {
     Url url = buildUrl();
     url.setDeletedDate(Instant.now());
     urlRepository.save(url);
 
-    runFailedTest(FailedTestDto.builder()
-        .mockMvc(mockMvc)
-        .httpMethod(HttpMethod.GET)
-        .path(ApiPath.REDIRECT)
-        .pathVariables(new Object[]{TestConstant.SHORT_URL})
-        .errorCode(ErrorCode.DESTINATION_URL_NOT_FOUND)
-        .useAuth(false)
-        .build());
+    mockMvc.perform(get(ApiPath.REDIRECT, TestConstant.SHORT_URL))
+        .andExpect(status().isFound())
+        .andExpect(header().string(HttpHeader.LOCATION, containsString(ApiPath.NOT_FOUND)));
   }
 
   @Test
   @Transactional
-  void redirect_disabledUrl_returns404() throws Exception {
+  void redirect_disabledUrl_returns302ToNotFound() throws Exception {
     Url url = buildUrl();
     url.setDisabled(true);
     urlRepository.save(url);
 
-    runFailedTest(FailedTestDto.builder()
-        .mockMvc(mockMvc)
-        .httpMethod(HttpMethod.GET)
-        .path(ApiPath.REDIRECT)
-        .pathVariables(new Object[]{TestConstant.SHORT_URL})
-        .errorCode(ErrorCode.DESTINATION_URL_NOT_FOUND)
-        .useAuth(false)
-        .build());
+    mockMvc.perform(get(ApiPath.REDIRECT, TestConstant.SHORT_URL))
+        .andExpect(status().isFound())
+        .andExpect(header().string(HttpHeader.LOCATION, containsString(ApiPath.NOT_FOUND)));
   }
 
   @Test
-  void redirect_notFoundCachedMarker_returns404() throws Exception {
+  void redirect_notFoundCachedMarker_returns302ToNotFound() throws Exception {
     cacheUtil.set(
         ConstantValue.URL_CACHE_PREFIX + TestConstant.SHORT_URL,
         CachedUrl.builder().status(UrlStatus.NOT_FOUND).build(),
         Duration.ofSeconds(45));
 
-    runFailedTest(FailedTestDto.builder()
-        .mockMvc(mockMvc)
-        .httpMethod(HttpMethod.GET)
-        .path(ApiPath.REDIRECT)
-        .pathVariables(new Object[] {TestConstant.SHORT_URL})
-        .errorCode(ErrorCode.DESTINATION_URL_NOT_FOUND)
-        .useAuth(false)
-        .build());
+    mockMvc.perform(get(ApiPath.REDIRECT, TestConstant.SHORT_URL))
+        .andExpect(status().isFound())
+        .andExpect(header().string(HttpHeader.LOCATION, containsString(ApiPath.NOT_FOUND)));
   }
 
   @Test
-  void redirect_expiredCachedMarker_returns410() throws Exception {
+  void redirect_expiredCachedMarker_returns302ToExpired() throws Exception {
     cacheUtil.set(
         ConstantValue.URL_CACHE_PREFIX + TestConstant.SHORT_URL,
         CachedUrl.builder().status(UrlStatus.EXPIRED).build(),
         Duration.ofMinutes(5));
 
-    runFailedTest(FailedTestDto.builder()
-        .mockMvc(mockMvc)
-        .httpMethod(HttpMethod.GET)
-        .path(ApiPath.REDIRECT)
-        .pathVariables(new Object[]{TestConstant.SHORT_URL})
-        .errorCode(ErrorCode.URL_EXPIRED)
-        .useAuth(false)
-        .build());
+    mockMvc.perform(get(ApiPath.REDIRECT, TestConstant.SHORT_URL))
+        .andExpect(status().isFound())
+        .andExpect(header().string(HttpHeader.LOCATION, containsString(ApiPath.EXPIRED)));
   }
 
   @Test
   @Transactional
-  void redirect_expiredUrl_returns410() throws Exception {
+  void redirect_expiredUrl_returns302ToExpired() throws Exception {
     Url url = buildUrl();
     url.setExpiryDate(Instant.now().minusSeconds(1));
     urlRepository.save(url);
 
-    runFailedTest(FailedTestDto.builder()
-        .mockMvc(mockMvc)
-        .httpMethod(HttpMethod.GET)
-        .path(ApiPath.REDIRECT)
-        .pathVariables(new Object[]{TestConstant.SHORT_URL})
-        .errorCode(ErrorCode.URL_EXPIRED)
-        .useAuth(false)
-        .build());
+    mockMvc.perform(get(ApiPath.REDIRECT, TestConstant.SHORT_URL))
+        .andExpect(status().isFound())
+        .andExpect(header().string(HttpHeader.LOCATION, containsString(ApiPath.EXPIRED)));
   }
 
   @Test

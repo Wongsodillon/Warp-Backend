@@ -10,6 +10,9 @@ public class TestConstant {
 
   public static final String SHORT_URL = "WARP-TEST-SHORT-URL";
 
+  public static final String PROTECTED_SHORT_URL = "WARP-TEST-PROTECTED-URL";
+  public static final String TEST_PASSWORD = "test-password";
+
   public static final String LOCALHOST_URL = "http://localhost/path";
   public static final String PRIVATE_IP_URL = "http://192.168.1.1/path";
   public static final String RAW_IP_URL = "http://8.8.8.8/path";

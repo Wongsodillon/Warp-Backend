@@ -5,5 +5,11 @@ public final class ApiPath {
 
   public static final String SHORTEN_URL = "/api/shorten";
 
+  public static final String VERIFY_PASSWORD = "/{shortUrl}/verify";
+
   public static final String ACTUATOR_HEALTH = "/actuator/health";
+  
+  public static final String NOT_FOUND = "/not-found-url";
+  public static final String EXPIRED = "/expired";
+  public static final String PASSWORD = "/password";
 }

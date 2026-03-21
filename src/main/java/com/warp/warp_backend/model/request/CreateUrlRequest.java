@@ -19,4 +19,6 @@ public class CreateUrlRequest {
   private String destinationUrl;
 
   private OffsetDateTime expiresAt;
+
+  private String password;
 }

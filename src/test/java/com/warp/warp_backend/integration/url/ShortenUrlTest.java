@@ -10,6 +10,7 @@ import com.warp.warp_backend.model.FailedTestDto;
 import com.warp.warp_backend.model.TestConstant;
 import com.warp.warp_backend.model.common.ErrorCode;
 import com.warp.warp_backend.model.constant.ApiPath;
+import com.warp.warp_backend.model.entity.Url;
 import com.warp.warp_backend.model.request.CreateUrlRequest;
 import com.warp.warp_backend.model.response.CreateUrlResponse;
 import com.warp.warp_backend.model.response.RestSingleResponse;
@@ -64,6 +65,35 @@ public class ShortenUrlTest extends BaseIntegrationContextTest {
     Assertions.assertTrue(response.isSuccess());
     Assertions.assertTrue(StringUtils.isNotBlank(response.getValue().getShortUrl()));
     Assertions.assertEquals(TestConstant.DESTINATION_URL, response.getValue().getDestinationUrl());
+  }
+
+  @Test
+  @Transactional
+  void shorten_withPassword_returns200AndIsProtected() throws Exception {
+    CreateUrlRequest request = CreateUrlRequest.builder()
+        .destinationUrl(TestConstant.DESTINATION_URL)
+        .password(TestConstant.TEST_PASSWORD)
+        .build();
+
+    String responseString =
+        mockMvc.perform(withAuth(post(ApiPath.SHORTEN_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+
+    RestSingleResponse<CreateUrlResponse> response =
+        objectMapper.readValue(responseString, new TypeReference<>() {});
+
+    Assertions.assertTrue(response.isSuccess());
+    String shortCode = response.getValue().getShortUrl()
+        .substring(response.getValue().getShortUrl().lastIndexOf('/') + 1);
+    Url saved = urlRepository.findByShortUrl(shortCode).orElseThrow();
+    Assertions.assertTrue(saved.isProtected());
+    Assertions.assertNotNull(saved.getPassword());
+    Assertions.assertNotEquals(TestConstant.TEST_PASSWORD, saved.getPassword());
   }
 
   @Test

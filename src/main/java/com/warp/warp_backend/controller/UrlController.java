@@ -6,6 +6,7 @@ import com.warp.warp_backend.model.constant.GeoConstant;
 import com.warp.warp_backend.model.constant.HttpHeader;
 import com.warp.warp_backend.model.event.UrlClickEvent;
 import com.warp.warp_backend.model.request.CreateUrlRequest;
+import com.warp.warp_backend.model.request.VerifyPasswordRequest;
 import com.warp.warp_backend.model.response.CreateUrlResponse;
 import com.warp.warp_backend.model.response.RedirectResponse;
 import com.warp.warp_backend.model.response.RestSingleResponse;
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.net.URI;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
@@ -59,25 +61,27 @@ public class UrlController extends BaseController {
     long start = System.currentTimeMillis();
     RedirectResponse redirectResponse = urlService.resolveDestination(shortUrl);
 
-    long latency = System.currentTimeMillis() - start;
-    UserAgentInfo uaInfo = userAgentUtil.parseUserAgent(request.getHeader(HttpHeader.USER_AGENT));
-    String cfCountry = request.getHeader(HttpHeader.CF_IP_COUNTRY);
-    String countryCode = (cfCountry != null && !cfCountry.isBlank() && !cfCountry.equals(GeoConstant.CF_UNKNOWN))
-        ? cfCountry
-        : geoLocationService.resolveCountryCode(userAgentUtil.extractClientIp(request)).orElse(null);
-    UrlClickEvent event = UrlClickEvent.builder()
-        .eventId(UUID.randomUUID())
-        .urlId(redirectResponse.getUrlId())
-        .shortUrl(shortUrl)
-        .timestamp(Instant.now())
-        .countryCode(countryCode)
-        .referrer(userAgentUtil.parseReferrer(request.getHeader(HttpHeader.REFERER)))
-        .deviceType(uaInfo.getDeviceType())
-        .browser(uaInfo.getBrowser())
-        .responseLatencyMs(latency)
-        .build();
+    if (Objects.nonNull(redirectResponse.getUrlId())) {
+      long latency = System.currentTimeMillis() - start;
+      UserAgentInfo uaInfo = userAgentUtil.parseUserAgent(request.getHeader(HttpHeader.USER_AGENT));
+      String cfCountry = request.getHeader(HttpHeader.CF_IP_COUNTRY);
+      String countryCode = (cfCountry != null && !cfCountry.isBlank() && !cfCountry.equals(GeoConstant.CF_UNKNOWN))
+          ? cfCountry
+          : geoLocationService.resolveCountryCode(userAgentUtil.extractClientIp(request)).orElse(null);
+      UrlClickEvent event = UrlClickEvent.builder()
+          .eventId(UUID.randomUUID())
+          .urlId(redirectResponse.getUrlId())
+          .shortUrl(shortUrl)
+          .timestamp(Instant.now())
+          .countryCode(countryCode)
+          .referrer(userAgentUtil.parseReferrer(request.getHeader(HttpHeader.REFERER)))
+          .deviceType(uaInfo.getDeviceType())
+          .browser(uaInfo.getBrowser())
+          .responseLatencyMs(latency)
+          .build();
 
-    urlEventPublisher.publish(event);
+      urlEventPublisher.publish(event);
+    }
 
     return ResponseEntity.status(HttpStatus.FOUND)
         .location(redirectResponse.getLocation())
@@ -91,6 +95,29 @@ public class UrlController extends BaseController {
     return PREFETCH.equalsIgnoreCase(purpose)
         || (Objects.nonNull(secPurpose) && secPurpose.toLowerCase().startsWith(PREFETCH))
         || PREFETCH.equalsIgnoreCase(xMoz);
+  }
+
+  @GetMapping(path = ApiPath.NOT_FOUND)
+  public ResponseEntity<Void> notFound() {
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+  }
+
+  @GetMapping(path = ApiPath.EXPIRED)
+  public ResponseEntity<Void> expired() {
+    return ResponseEntity.status(HttpStatus.GONE).build();
+  }
+
+  @PostMapping(
+      path = ApiPath.VERIFY_PASSWORD,
+      consumes = MediaType.APPLICATION_JSON_VALUE
+  )
+  public ResponseEntity<Void> verifyPassword(
+      @PathVariable String shortUrl,
+      @RequestBody VerifyPasswordRequest request) {
+    String destinationUrl = urlService.verifyPassword(shortUrl, request.getPassword());
+    return ResponseEntity.status(HttpStatus.FOUND)
+        .location(URI.create(destinationUrl))
+        .build();
   }
 
   @PostMapping(
