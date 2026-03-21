@@ -12,6 +12,7 @@ import com.warp.warp_backend.model.TestConstant;
 import com.warp.warp_backend.model.common.ErrorCode;
 import com.warp.warp_backend.model.constant.ApiPath;
 import com.warp.warp_backend.model.constant.ConstantValue;
+import com.warp.warp_backend.model.constant.HttpHeader;
 import com.warp.warp_backend.model.constant.KafkaTopic;
 import com.warp.warp_backend.model.entity.Url;
 import com.warp.warp_backend.model.event.UrlClickEvent;
@@ -94,9 +95,9 @@ public class RedirectTest extends BaseIntegrationContextTest {
     urlRepository.save(buildUrl());
 
     mockMvc.perform(get(ApiPath.REDIRECT, TestConstant.SHORT_URL)
-            .header("CF-IPCountry", "US"))
+            .header(HttpHeader.CF_IP_COUNTRY, "US"))
         .andExpect(status().isFound())
-        .andExpect(header().string("Location", TestConstant.DESTINATION_URL));
+        .andExpect(header().string(HttpHeader.LOCATION, TestConstant.DESTINATION_URL));
 
     Awaitility.await()
         .atMost(5, TimeUnit.SECONDS)
@@ -122,7 +123,7 @@ public class RedirectTest extends BaseIntegrationContextTest {
 
     mockMvc.perform(get(ApiPath.REDIRECT, TestConstant.SHORT_URL))
         .andExpect(status().isFound())
-        .andExpect(header().string("Location", TestConstant.DESTINATION_URL));
+        .andExpect(header().string(HttpHeader.LOCATION, TestConstant.DESTINATION_URL));
   }
 
   @Test
