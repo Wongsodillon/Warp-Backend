@@ -23,6 +23,7 @@ public class UrlCacheService {
   private static final Logger log = LoggerFactory.getLogger(UrlCacheService.class);
   private static final Duration DEFAULT_TTL   = Duration.ofHours(1);
   private static final Duration EXPIRED_TTL   = Duration.ofMinutes(5);
+  private static final Duration NOT_FOUND_TTL = Duration.ofMinutes(1);
 
   @Autowired
   private MeterRegistry meterRegistry;
@@ -73,23 +74,19 @@ public class UrlCacheService {
     return urlRepository.findByShortUrl(shortUrl)
         .map(u -> resolveFromDb(key, u))
         .orElseGet(() -> {
-          CachedUrl notFound = CachedUrl.builder()
+          log.debug("[L1 & L2 SET NOT_FOUND] key={}", key);
+          return cacheAndReturn(key, CachedUrl.builder()
               .status(UrlStatus.NOT_FOUND)
-              .build();
-          urlL1Cache.put(key, notFound);
-          log.debug("[L1 SET NOT_FOUND] key={}", key);
-          return notFound;
+              .build(), NOT_FOUND_TTL);
         });
   }
 
   private CachedUrl resolveFromDb(String key, Url u) {
     if (Objects.nonNull(u.getDeletedDate()) || u.isDisabled()) {
-      CachedUrl notFound = CachedUrl.builder()
+      log.debug("[L1 & L2 SET NOT_FOUND] key={}", key);
+      return cacheAndReturn(key, CachedUrl.builder()
           .status(UrlStatus.NOT_FOUND)
-          .build();
-      urlL1Cache.put(key, notFound);
-      log.debug("[L1 SET NOT_FOUND deleted/disabled] key={}", key);
-      return notFound;
+          .build(), NOT_FOUND_TTL);
     }
     if (Objects.nonNull(u.getExpiryDate()) && System.currentTimeMillis() >= u.getExpiryDate().toEpochMilli()) {
       return cacheAndReturn(key, CachedUrl.builder()
@@ -133,8 +130,8 @@ public class UrlCacheService {
 
   public void evictUrl(String shortUrl) {
     String key = ConstantValue.URL_CACHE_PREFIX + shortUrl;
-    urlL1Cache.invalidate(key);
     cacheUtil.delete(key);
+    urlL1Cache.invalidate(key);
     log.debug("[cache EVICT] key={}", key);
   }
 }
