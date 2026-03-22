@@ -28,6 +28,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.OffsetDateTime;
+
 public class ShortenUrlTest extends BaseIntegrationContextTest {
 
   @Autowired
@@ -287,6 +289,50 @@ public class ShortenUrlTest extends BaseIntegrationContextTest {
 
     Assertions.assertTrue(response.isSuccess());
     Assertions.assertFalse(response.getValue().getShortUrl().endsWith("/   "));
+  }
+
+  @Test
+  void shorten_expiresAtInThePast_returns400() throws Exception {
+    runFailedTest(FailedTestDto.builder()
+        .mockMvc(mockMvc)
+        .httpMethod(HttpMethod.POST)
+        .path(ApiPath.SHORTEN_URL)
+        .body(CreateUrlRequest.builder()
+            .destinationUrl(TestConstant.DESTINATION_URL)
+            .expiresAt(OffsetDateTime.now().minusMinutes(1))
+            .build())
+        .errorCode(ErrorCode.EXPIRES_AT_IN_THE_PAST)
+        .httpStatus(HttpStatus.BAD_REQUEST)
+        .build());
+  }
+
+  @Test
+  @Transactional
+  void shorten_withFutureExpiresAt_returns200AndExpiryIsSaved() throws Exception {
+    OffsetDateTime expiresAt = OffsetDateTime.now().plusHours(1);
+    CreateUrlRequest request = CreateUrlRequest.builder()
+        .destinationUrl(TestConstant.DESTINATION_URL)
+        .expiresAt(expiresAt)
+        .build();
+
+    String responseString =
+        mockMvc.perform(withAuth(post(ApiPath.SHORTEN_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+
+    RestSingleResponse<CreateUrlResponse> response =
+        objectMapper.readValue(responseString, new TypeReference<>() {});
+
+    Assertions.assertTrue(response.isSuccess());
+    String shortCode = response.getValue().getShortUrl()
+        .substring(response.getValue().getShortUrl().lastIndexOf('/') + 1);
+    Url saved = urlRepository.findByShortUrl(shortCode).orElseThrow();
+    Assertions.assertNotNull(saved.getExpiryDate());
+    Assertions.assertEquals(expiresAt.toInstant(), saved.getExpiryDate());
   }
 
   @Test

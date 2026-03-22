@@ -84,6 +84,10 @@ public class UrlService {
   public CreateUrlResponse shortenUrl(CreateUrlRequest request) {
     urlValidationUtil.validateDestinationUrl(request.getDestinationUrl());
 
+    if (Objects.nonNull(request.getExpiresAt()) && !request.getExpiresAt().toInstant().isAfter(Instant.now())) {
+      throw new BaseException(ErrorCode.EXPIRES_AT_IN_THE_PAST);
+    }
+
     String shortUrl;
     if (Objects.nonNull(request.getCustomShortUrl()) && !request.getCustomShortUrl().isBlank()) {
       if (!SAFE_SHORT_URL_PATTERN.matcher(request.getCustomShortUrl()).matches()) {

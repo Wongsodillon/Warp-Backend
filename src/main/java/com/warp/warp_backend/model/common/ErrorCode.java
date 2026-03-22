@@ -17,6 +17,8 @@ public enum ErrorCode {
   UNAUTHENTICATED(401,"ERR-401001", "Unauthenticated User"),
   INVALID_PASSWORD(401, "ERR-401002", "Invalid password"),
 
+  EXPIRES_AT_IN_THE_PAST(400, "ERR-400006", "Expiry date must be in the future"),
+
   CUSTOM_SHORT_URL_ALREADY_EXISTS(409, "ERR-409001", "Custom short URL is already in use"),
 
   DESTINATION_URL_NOT_FOUND(404, "ERR-404001", "URL not found"),
