@@ -315,10 +315,9 @@ public class ShortenUrlTest extends BaseIntegrationContextTest {
         .expiresAt(expiresAt)
         .build();
 
-    String responseString =
-        mockMvc.perform(withAuth(post(ApiPath.SHORTEN_URL)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))))
+    String responseString = mockMvc.perform(withAuth(post(ApiPath.SHORTEN_URL)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request))))
             .andExpect(status().isOk())
             .andReturn()
             .getResponse()
