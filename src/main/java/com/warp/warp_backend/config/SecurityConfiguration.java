@@ -15,6 +15,11 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtTimestampValidator;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -26,6 +31,18 @@ public class SecurityConfiguration {
   @Bean
   public PasswordEncoder passwordEncoder() {
     return new BCryptPasswordEncoder();
+  }
+
+  @Bean
+  public CorsConfigurationSource corsConfigurationSource() {
+    CorsConfiguration config = new CorsConfiguration();
+    config.setAllowedOrigins(List.of(applicationProperties.getFrontendUrl()));
+    config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+    config.setAllowedHeaders(List.of("*"));
+    config.setAllowCredentials(true);
+    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+    source.registerCorsConfiguration("/**", config);
+    return source;
   }
 
   @Bean
@@ -56,9 +73,11 @@ public class SecurityConfiguration {
 
   @Bean
   @Order(1)
-  public SecurityFilterChain redirectFilterChain(HttpSecurity http) throws Exception {
+  public SecurityFilterChain redirectFilterChain(HttpSecurity http,
+      CorsConfigurationSource corsConfigurationSource) throws Exception {
     http.securityMatcher("/{shortUrl}")
         .csrf(AbstractHttpConfigurer::disable)
+        .cors(cors -> cors.configurationSource(corsConfigurationSource))
         .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
 
     return http.build();
@@ -67,13 +86,16 @@ public class SecurityConfiguration {
   @Bean
   @Order(2)
   public SecurityFilterChain apiFilterChain(HttpSecurity http,
-      ClerkJwtAuthenticationConverter converter) throws Exception {
+      ClerkJwtAuthenticationConverter converter,
+      CorsConfigurationSource corsConfigurationSource) throws Exception {
     http.csrf(AbstractHttpConfigurer::disable)
+        .cors(cors -> cors.configurationSource(corsConfigurationSource))
         .formLogin(AbstractHttpConfigurer::disable)
         .logout(AbstractHttpConfigurer::disable)
         .httpBasic(AbstractHttpConfigurer::disable)
         .authorizeHttpRequests(auth -> auth
             .requestMatchers("/api/**").authenticated()
+            .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
             .anyRequest().permitAll())
         .oauth2ResourceServer(oauth -> oauth
             .jwt(jwt -> jwt.jwtAuthenticationConverter(converter)));

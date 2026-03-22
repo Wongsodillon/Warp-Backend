@@ -10,11 +10,18 @@ import com.warp.warp_backend.model.request.VerifyPasswordRequest;
 import com.warp.warp_backend.model.response.CreateUrlResponse;
 import com.warp.warp_backend.model.response.RedirectResponse;
 import com.warp.warp_backend.model.response.RestSingleResponse;
+import com.warp.warp_backend.model.response.VerifyPasswordResponse;
 import com.warp.warp_backend.service.GeoLocationService;
 import com.warp.warp_backend.service.UrlEventPublisher;
 import com.warp.warp_backend.service.UrlService;
 import com.warp.warp_backend.model.general.UserAgentInfo;
 import com.warp.warp_backend.util.UserAgentUtil;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,11 +35,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.net.URI;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
+@Tag(name = "URLs", description = "URL shortening, redirect, and password verification")
 @RestController
 public class UrlController extends BaseController {
 
@@ -51,8 +58,18 @@ public class UrlController extends BaseController {
   @Autowired
   private GeoLocationService geoLocationService;
 
+  @Operation(summary = "Redirect to destination URL", description = "Resolves a short URL and redirects the client. Publishes a click analytics event. Returns 204 for browser prefetch requests.")
+  @ApiResponses({
+      @ApiResponse(responseCode = "302", description = "Redirect to destination URL"),
+      @ApiResponse(responseCode = "302", description = "Password-protected URL — redirect to /password page"),
+      @ApiResponse(responseCode = "302", description = "URL not found — redirect to /not-found-url"),
+      @ApiResponse(responseCode = "302", description = "URL expired — redirect to /expired"),
+      @ApiResponse(responseCode = "204", description = "Prefetch request ignored")
+  })
   @GetMapping(path = ApiPath.REDIRECT)
-  public ResponseEntity<Void> redirect(@PathVariable String shortUrl, HttpServletRequest request) {
+  public ResponseEntity<Void> redirect(
+      @Parameter(description = "Short URL code", example = "abc123") @PathVariable String shortUrl,
+      HttpServletRequest request) {
 
     if (isPrefetchRequest(request)) {
       return ResponseEntity.noContent().build();
@@ -97,28 +114,47 @@ public class UrlController extends BaseController {
         || PREFETCH.equalsIgnoreCase(xMoz);
   }
 
+  @Operation(summary = "Not found handler", description = "Target for internal redirects when a short URL does not exist.")
+  @ApiResponse(responseCode = "404", description = "Short URL not found")
   @GetMapping(path = ApiPath.NOT_FOUND)
   public ResponseEntity<Void> notFound() {
     return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
   }
 
+  @Operation(summary = "Expired URL handler", description = "Target for internal redirects when a short URL has passed its expiry date.")
+  @ApiResponse(responseCode = "410", description = "URL has expired")
   @GetMapping(path = ApiPath.EXPIRED)
   public ResponseEntity<Void> expired() {
     return ResponseEntity.status(HttpStatus.GONE).build();
   }
 
+  @Operation(summary = "Verify password for a protected URL", description = "Submits a password for a password-protected short URL. On success, returns the destination URL as JSON so the frontend can navigate. On failure, returns 401.")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Password correct — destination URL returned in response body"),
+      @ApiResponse(responseCode = "401", description = "Incorrect password")
+  })
   @PostMapping(
       path = ApiPath.VERIFY_PASSWORD,
-      consumes = MediaType.APPLICATION_JSON_VALUE
+      consumes = MediaType.APPLICATION_JSON_VALUE,
+      produces = MediaType.APPLICATION_JSON_VALUE
   )
-  public ResponseEntity<Void> verifyPassword(@PathVariable String shortUrl,
+  public RestSingleResponse<VerifyPasswordResponse> verifyPassword(
+      @Parameter(description = "Short URL code", example = "abc123") @PathVariable String shortUrl,
       @RequestBody VerifyPasswordRequest request) {
     String destinationUrl = urlService.verifyPassword(shortUrl, request.getPassword());
-    return ResponseEntity.status(HttpStatus.FOUND)
-        .location(URI.create(destinationUrl))
-        .build();
+    return this.toResponseSingleResponse(VerifyPasswordResponse.builder()
+            .destinationUrl(destinationUrl)
+        .build());
   }
 
+  @Operation(summary = "Create a short URL", description = "Creates a shortened URL. Optionally supports custom short codes, password protection, and expiry. Requires Clerk JWT authentication.")
+  @SecurityRequirement(name = "bearerAuth")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Short URL created successfully"),
+      @ApiResponse(responseCode = "400", description = "Validation error — blank destination URL, custom short URL too long, or expiry date in the past"),
+      @ApiResponse(responseCode = "401", description = "Unauthenticated"),
+      @ApiResponse(responseCode = "409", description = "Custom short URL already taken")
+  })
   @PostMapping(
       path = ApiPath.SHORTEN_URL,
       produces = MediaType.APPLICATION_JSON_VALUE,
