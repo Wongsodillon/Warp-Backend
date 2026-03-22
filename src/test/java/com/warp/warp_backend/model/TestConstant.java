@@ -19,4 +19,9 @@ public class TestConstant {
   public static final String MULTICAST_IP_URL = "http://224.0.0.1/path";
   public static final String FTP_URL = "ftp://example.com/file";
   public static final String MALFORMED_URL = "not-a-url";
+
+  public static final String CUSTOM_SHORT_URL_VALUE = "my-custom-link";
+  public static final String DUPLICATE_CUSTOM_SHORT_URL = "conflict-url";
+  public static final String TOO_LONG_CUSTOM_SHORT_URL = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"; // 31 chars
+  public static final String INVALID_FORMAT_CUSTOM_SHORT_URL = "bad url!";
 }

@@ -1,5 +1,6 @@
 package com.warp.warp_backend.model.request;
 
+import com.warp.warp_backend.model.annotation.constraint.MaxLength;
 import com.warp.warp_backend.model.annotation.constraint.NotBlank;
 import com.warp.warp_backend.model.common.ErrorCode;
 import lombok.AllArgsConstructor;
@@ -21,4 +22,7 @@ public class CreateUrlRequest {
   private OffsetDateTime expiresAt;
 
   private String password;
+
+  @MaxLength(value = 30, errorCode = ErrorCode.CUSTOM_SHORT_URL_TOO_LONG)
+  private String customShortUrl;
 }

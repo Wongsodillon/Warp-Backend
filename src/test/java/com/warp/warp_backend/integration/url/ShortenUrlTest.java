@@ -16,6 +16,7 @@ import com.warp.warp_backend.model.response.CreateUrlResponse;
 import com.warp.warp_backend.model.response.RestSingleResponse;
 import com.warp.warp_backend.repository.UrlRepository;
 import joptsimple.internal.Strings;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -191,6 +192,123 @@ public class ShortenUrlTest extends BaseIntegrationContextTest {
             .build())
         .errorCode(ErrorCode.DESTINATION_URL_IS_INVALID)
         .httpStatus(HttpStatus.BAD_REQUEST)
+        .build());
+  }
+
+  @Test
+  @Transactional
+  void shorten_withCustomShortUrl_returns200() throws Exception {
+    CreateUrlRequest request = CreateUrlRequest.builder()
+        .destinationUrl(TestConstant.DESTINATION_URL)
+        .customShortUrl(TestConstant.CUSTOM_SHORT_URL_VALUE)
+        .build();
+
+    String responseString =
+        mockMvc.perform(withAuth(post(ApiPath.SHORTEN_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+
+    RestSingleResponse<CreateUrlResponse> response =
+        objectMapper.readValue(responseString, new TypeReference<>() {});
+
+    Assertions.assertTrue(response.isSuccess());
+    Assertions.assertTrue(response.getValue().getShortUrl().endsWith("/" + TestConstant.CUSTOM_SHORT_URL_VALUE));
+    Assertions.assertEquals(TestConstant.DESTINATION_URL, response.getValue().getDestinationUrl());
+  }
+
+  @Test
+  void shorten_customShortUrlTooLong_returns400() throws Exception {
+    runFailedTest(FailedTestDto.builder()
+        .mockMvc(mockMvc)
+        .httpMethod(HttpMethod.POST)
+        .path(ApiPath.SHORTEN_URL)
+        .body(CreateUrlRequest.builder()
+            .destinationUrl(TestConstant.DESTINATION_URL)
+            .customShortUrl(TestConstant.TOO_LONG_CUSTOM_SHORT_URL)
+            .build())
+        .errorCode(ErrorCode.CUSTOM_SHORT_URL_TOO_LONG)
+        .httpStatus(HttpStatus.BAD_REQUEST)
+        .build());
+  }
+
+  @Test
+  void shorten_customShortUrlInvalidFormat_returns400() throws Exception {
+    runFailedTest(FailedTestDto.builder()
+        .mockMvc(mockMvc)
+        .httpMethod(HttpMethod.POST)
+        .path(ApiPath.SHORTEN_URL)
+        .body(CreateUrlRequest.builder()
+            .destinationUrl(TestConstant.DESTINATION_URL)
+            .customShortUrl(TestConstant.INVALID_FORMAT_CUSTOM_SHORT_URL)
+            .build())
+        .errorCode(ErrorCode.CUSTOM_SHORT_URL_INVALID_FORMAT)
+        .httpStatus(HttpStatus.BAD_REQUEST)
+        .build());
+  }
+
+  @Test
+  void shorten_reservedCustomShortUrl_returns400() throws Exception {
+    runFailedTest(FailedTestDto.builder()
+        .mockMvc(mockMvc)
+        .httpMethod(HttpMethod.POST)
+        .path(ApiPath.SHORTEN_URL)
+        .body(CreateUrlRequest.builder()
+            .destinationUrl(TestConstant.DESTINATION_URL)
+            .customShortUrl("not-found-url")
+            .build())
+        .errorCode(ErrorCode.CUSTOM_SHORT_URL_ALREADY_EXISTS)
+        .httpStatus(HttpStatus.CONFLICT)
+        .build());
+  }
+
+  @Test
+  @Transactional
+  void shorten_blankCustomShortUrl_returns200AndAutoGenerates() throws Exception {
+    CreateUrlRequest request = CreateUrlRequest.builder()
+        .destinationUrl(TestConstant.DESTINATION_URL)
+        .customShortUrl("   ")
+        .build();
+
+    String responseString =
+        mockMvc.perform(withAuth(post(ApiPath.SHORTEN_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+
+    RestSingleResponse<CreateUrlResponse> response =
+        objectMapper.readValue(responseString, new TypeReference<>() {});
+
+    Assertions.assertTrue(response.isSuccess());
+    Assertions.assertFalse(response.getValue().getShortUrl().endsWith("/   "));
+  }
+
+  @Test
+  @Transactional
+  void shorten_duplicateCustomShortUrl_returns409() throws Exception {
+    Url url = Url.builder()
+        .id(urlRepository.getNextId())
+        .destinationUrl(TestConstant.DESTINATION_URL)
+        .shortUrl(TestConstant.DUPLICATE_CUSTOM_SHORT_URL)
+        .build();
+    urlRepository.save(url);
+
+    runFailedTest(FailedTestDto.builder()
+        .mockMvc(mockMvc)
+        .httpMethod(HttpMethod.POST)
+        .path(ApiPath.SHORTEN_URL)
+        .body(CreateUrlRequest.builder()
+            .destinationUrl(TestConstant.DESTINATION_URL)
+            .customShortUrl(TestConstant.DUPLICATE_CUSTOM_SHORT_URL)
+            .build())
+        .errorCode(ErrorCode.CUSTOM_SHORT_URL_ALREADY_EXISTS)
+        .httpStatus(HttpStatus.CONFLICT)
         .build());
   }
 }
