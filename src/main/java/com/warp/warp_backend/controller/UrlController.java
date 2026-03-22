@@ -111,8 +111,7 @@ public class UrlController extends BaseController {
       path = ApiPath.VERIFY_PASSWORD,
       consumes = MediaType.APPLICATION_JSON_VALUE
   )
-  public ResponseEntity<Void> verifyPassword(
-      @PathVariable String shortUrl,
+  public ResponseEntity<Void> verifyPassword(@PathVariable String shortUrl,
       @RequestBody VerifyPasswordRequest request) {
     String destinationUrl = urlService.verifyPassword(shortUrl, request.getPassword());
     return ResponseEntity.status(HttpStatus.FOUND)

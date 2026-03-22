@@ -16,6 +16,7 @@ import com.warp.warp_backend.service.util.UrlServiceUtil;
 import com.warp.warp_backend.util.Base62;
 import com.warp.warp_backend.util.UrlValidationUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -24,9 +25,12 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 @Service
 public class UrlService {
+
+  private static final Pattern SAFE_SHORT_URL_PATTERN = Pattern.compile("^[a-zA-Z0-9_-]+$");
 
   @Autowired
   private UrlRepository urlRepository;
@@ -80,14 +84,39 @@ public class UrlService {
   public CreateUrlResponse shortenUrl(CreateUrlRequest request) {
     urlValidationUtil.validateDestinationUrl(request.getDestinationUrl());
 
-    long id = urlRepository.getNextId();
-    long obfuscated = id ^ applicationProperties.getSecret();
+    if (Objects.nonNull(request.getExpiresAt()) && !request.getExpiresAt().toInstant().isAfter(Instant.now())) {
+      throw new BaseException(ErrorCode.EXPIRES_AT_IN_THE_PAST);
+    }
 
-    String shortUrl = Base62.encode(obfuscated);
+    String shortUrl;
+    if (Objects.nonNull(request.getCustomShortUrl()) && !request.getCustomShortUrl().isBlank()) {
+      if (!SAFE_SHORT_URL_PATTERN.matcher(request.getCustomShortUrl()).matches()) {
+        throw new BaseException(ErrorCode.CUSTOM_SHORT_URL_INVALID_FORMAT);
+      }
+      if (applicationProperties.getReservedShortUrl().contains(request.getCustomShortUrl())) {
+        throw new BaseException(ErrorCode.CUSTOM_SHORT_URL_ALREADY_EXISTS);
+      }
+      shortUrl = request.getCustomShortUrl();
+      try {
+        urlRepository.saveAndFlush(buildUrlEntity(urlRepository.getNextId(), shortUrl, request));
+      } catch (DataIntegrityViolationException e) {
+        throw new BaseException(ErrorCode.CUSTOM_SHORT_URL_ALREADY_EXISTS);
+      }
+    } else {
+      long id = urlRepository.getNextId();
+      shortUrl = Base62.encode(id ^ applicationProperties.getSecret());
+      urlRepository.save(buildUrlEntity(id, shortUrl, request));
+    }
 
+    return CreateUrlResponse.builder()
+        .shortUrl(urlServiceUtil.formatUrl(shortUrl))
+        .destinationUrl(request.getDestinationUrl())
+        .build();
+  }
+
+  private Url buildUrlEntity(long id, String shortUrl, CreateUrlRequest request) {
     boolean isProtected = Objects.nonNull(request.getPassword()) && !request.getPassword().isBlank();
-
-    Url url = Url.builder()
+    return Url.builder()
         .id(id)
         .userId(currentUserService.getCurrentUserId())
         .shortUrl(shortUrl)
@@ -97,13 +126,6 @@ public class UrlService {
             .orElse(null))
         .isProtected(isProtected)
         .password(isProtected ? passwordEncoder.encode(request.getPassword()) : null)
-        .build();
-
-    urlRepository.save(url);
-
-    return CreateUrlResponse.builder()
-        .shortUrl(urlServiceUtil.formatUrl(shortUrl))
-        .destinationUrl(request.getDestinationUrl())
         .build();
   }
 
