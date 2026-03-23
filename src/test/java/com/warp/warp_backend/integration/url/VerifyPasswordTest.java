@@ -1,7 +1,8 @@
 package com.warp.warp_backend.integration.url;
 
+import static org.hamcrest.Matchers.is;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,7 +11,6 @@ import com.warp.warp_backend.model.FailedTestDto;
 import com.warp.warp_backend.model.TestConstant;
 import com.warp.warp_backend.model.common.ErrorCode;
 import com.warp.warp_backend.model.constant.ApiPath;
-import com.warp.warp_backend.model.constant.HttpHeader;
 import com.warp.warp_backend.model.entity.Url;
 import com.warp.warp_backend.model.request.VerifyPasswordRequest;
 import com.warp.warp_backend.repository.UrlRepository;
@@ -49,15 +49,15 @@ public class VerifyPasswordTest extends BaseIntegrationContextTest {
 
   @Test
   @Transactional
-  void verify_correctPassword_returns302ToDestination() throws Exception {
+  void verify_correctPassword_returns200WithDestinationUrl() throws Exception {
     urlRepository.save(buildProtectedUrl());
 
     mockMvc.perform(post(ApiPath.VERIFY_PASSWORD, TestConstant.PROTECTED_SHORT_URL)
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(
                 VerifyPasswordRequest.builder().password(TestConstant.TEST_PASSWORD).build())))
-        .andExpect(status().isFound())
-        .andExpect(header().string(HttpHeader.LOCATION, TestConstant.DESTINATION_URL));
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.value.destinationUrl", is(TestConstant.DESTINATION_URL)));
   }
 
   @Test

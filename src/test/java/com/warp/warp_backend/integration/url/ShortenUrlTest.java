@@ -25,6 +25,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +38,9 @@ public class ShortenUrlTest extends BaseIntegrationContextTest {
 
   @Autowired
   private MockMvc mockMvc;
+
+  @Autowired
+  private PasswordEncoder passwordEncoder;
 
   @Autowired
   private UrlRepository urlRepository;
@@ -96,7 +100,7 @@ public class ShortenUrlTest extends BaseIntegrationContextTest {
     Url saved = urlRepository.findByShortUrl(shortCode).orElseThrow();
     Assertions.assertTrue(saved.isProtected());
     Assertions.assertNotNull(saved.getPassword());
-    Assertions.assertNotEquals(TestConstant.TEST_PASSWORD, saved.getPassword());
+    Assertions.assertTrue(passwordEncoder.matches(TestConstant.TEST_PASSWORD, saved.getPassword()));
   }
 
   @Test
@@ -109,90 +113,6 @@ public class ShortenUrlTest extends BaseIntegrationContextTest {
             .destinationUrl(Strings.EMPTY)
             .build())
         .errorCode(ErrorCode.DESTINATION_URL_IS_BLANK)
-        .httpStatus(HttpStatus.BAD_REQUEST)
-        .build());
-  }
-
-  @Test
-  void shorten_localhostUrl_returns400() throws Exception {
-    runFailedTest(FailedTestDto.builder()
-        .mockMvc(mockMvc)
-        .httpMethod(HttpMethod.POST)
-        .path(ApiPath.SHORTEN_URL)
-        .body(CreateUrlRequest.builder()
-            .destinationUrl(TestConstant.LOCALHOST_URL)
-            .build())
-        .errorCode(ErrorCode.DESTINATION_URL_IS_INVALID)
-        .httpStatus(HttpStatus.BAD_REQUEST)
-        .build());
-  }
-
-  @Test
-  void shorten_privateIpUrl_returns400() throws Exception {
-    runFailedTest(FailedTestDto.builder()
-        .mockMvc(mockMvc)
-        .httpMethod(HttpMethod.POST)
-        .path(ApiPath.SHORTEN_URL)
-        .body(CreateUrlRequest.builder()
-            .destinationUrl(TestConstant.PRIVATE_IP_URL)
-            .build())
-        .errorCode(ErrorCode.DESTINATION_URL_IS_INVALID)
-        .httpStatus(HttpStatus.BAD_REQUEST)
-        .build());
-  }
-
-  @Test
-  void shorten_publicRawIpUrl_returns400() throws Exception {
-    runFailedTest(FailedTestDto.builder()
-        .mockMvc(mockMvc)
-        .httpMethod(HttpMethod.POST)
-        .path(ApiPath.SHORTEN_URL)
-        .body(CreateUrlRequest.builder()
-            .destinationUrl(TestConstant.RAW_IP_URL)
-            .build())
-        .errorCode(ErrorCode.DESTINATION_URL_IS_INVALID)
-        .httpStatus(HttpStatus.BAD_REQUEST)
-        .build());
-  }
-
-  @Test
-  void shorten_ftpSchemeUrl_returns400() throws Exception {
-    runFailedTest(FailedTestDto.builder()
-        .mockMvc(mockMvc)
-        .httpMethod(HttpMethod.POST)
-        .path(ApiPath.SHORTEN_URL)
-        .body(CreateUrlRequest.builder()
-            .destinationUrl(TestConstant.FTP_URL)
-            .build())
-        .errorCode(ErrorCode.DESTINATION_URL_IS_INVALID)
-        .httpStatus(HttpStatus.BAD_REQUEST)
-        .build());
-  }
-
-  @Test
-  void shorten_malformedUrl_returns400() throws Exception {
-    runFailedTest(FailedTestDto.builder()
-        .mockMvc(mockMvc)
-        .httpMethod(HttpMethod.POST)
-        .path(ApiPath.SHORTEN_URL)
-        .body(CreateUrlRequest.builder()
-            .destinationUrl(TestConstant.MALFORMED_URL)
-            .build())
-        .errorCode(ErrorCode.DESTINATION_URL_IS_INVALID)
-        .httpStatus(HttpStatus.BAD_REQUEST)
-        .build());
-  }
-
-  @Test
-  void shorten_multicastUrl_returns400() throws Exception {
-    runFailedTest(FailedTestDto.builder()
-        .mockMvc(mockMvc)
-        .httpMethod(HttpMethod.POST)
-        .path(ApiPath.SHORTEN_URL)
-        .body(CreateUrlRequest.builder()
-            .destinationUrl(TestConstant.MULTICAST_IP_URL)
-            .build())
-        .errorCode(ErrorCode.DESTINATION_URL_IS_INVALID)
         .httpStatus(HttpStatus.BAD_REQUEST)
         .build());
   }
@@ -318,10 +238,10 @@ public class ShortenUrlTest extends BaseIntegrationContextTest {
     String responseString = mockMvc.perform(withAuth(post(ApiPath.SHORTEN_URL)
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request))))
-            .andExpect(status().isOk())
-            .andReturn()
-            .getResponse()
-            .getContentAsString();
+        .andExpect(status().isOk())
+        .andReturn()
+        .getResponse()
+        .getContentAsString();
 
     RestSingleResponse<CreateUrlResponse> response =
         objectMapper.readValue(responseString, new TypeReference<>() {});
@@ -354,6 +274,90 @@ public class ShortenUrlTest extends BaseIntegrationContextTest {
             .build())
         .errorCode(ErrorCode.CUSTOM_SHORT_URL_ALREADY_EXISTS)
         .httpStatus(HttpStatus.CONFLICT)
+        .build());
+  }
+
+  @Test
+  void shorten_localhostUrl_returns400() throws Exception {
+    runFailedTest(FailedTestDto.builder()
+        .mockMvc(mockMvc)
+        .httpMethod(HttpMethod.POST)
+        .path(ApiPath.SHORTEN_URL)
+        .body(CreateUrlRequest.builder()
+            .destinationUrl(TestConstant.LOCALHOST_URL)
+            .build())
+        .errorCode(ErrorCode.DESTINATION_URL_IS_INVALID)
+        .httpStatus(HttpStatus.BAD_REQUEST)
+        .build());
+  }
+
+  @Test
+  void shorten_privateIpUrl_returns400() throws Exception {
+    runFailedTest(FailedTestDto.builder()
+        .mockMvc(mockMvc)
+        .httpMethod(HttpMethod.POST)
+        .path(ApiPath.SHORTEN_URL)
+        .body(CreateUrlRequest.builder()
+            .destinationUrl(TestConstant.PRIVATE_IP_URL)
+            .build())
+        .errorCode(ErrorCode.DESTINATION_URL_IS_INVALID)
+        .httpStatus(HttpStatus.BAD_REQUEST)
+        .build());
+  }
+
+  @Test
+  void shorten_publicRawIpUrl_returns400() throws Exception {
+    runFailedTest(FailedTestDto.builder()
+        .mockMvc(mockMvc)
+        .httpMethod(HttpMethod.POST)
+        .path(ApiPath.SHORTEN_URL)
+        .body(CreateUrlRequest.builder()
+            .destinationUrl(TestConstant.RAW_IP_URL)
+            .build())
+        .errorCode(ErrorCode.DESTINATION_URL_IS_INVALID)
+        .httpStatus(HttpStatus.BAD_REQUEST)
+        .build());
+  }
+
+  @Test
+  void shorten_ftpSchemeUrl_returns400() throws Exception {
+    runFailedTest(FailedTestDto.builder()
+        .mockMvc(mockMvc)
+        .httpMethod(HttpMethod.POST)
+        .path(ApiPath.SHORTEN_URL)
+        .body(CreateUrlRequest.builder()
+            .destinationUrl(TestConstant.FTP_URL)
+            .build())
+        .errorCode(ErrorCode.DESTINATION_URL_IS_INVALID)
+        .httpStatus(HttpStatus.BAD_REQUEST)
+        .build());
+  }
+
+  @Test
+  void shorten_malformedUrl_returns400() throws Exception {
+    runFailedTest(FailedTestDto.builder()
+        .mockMvc(mockMvc)
+        .httpMethod(HttpMethod.POST)
+        .path(ApiPath.SHORTEN_URL)
+        .body(CreateUrlRequest.builder()
+            .destinationUrl(TestConstant.MALFORMED_URL)
+            .build())
+        .errorCode(ErrorCode.DESTINATION_URL_IS_INVALID)
+        .httpStatus(HttpStatus.BAD_REQUEST)
+        .build());
+  }
+
+  @Test
+  void shorten_multicastUrl_returns400() throws Exception {
+    runFailedTest(FailedTestDto.builder()
+        .mockMvc(mockMvc)
+        .httpMethod(HttpMethod.POST)
+        .path(ApiPath.SHORTEN_URL)
+        .body(CreateUrlRequest.builder()
+            .destinationUrl(TestConstant.MULTICAST_IP_URL)
+            .build())
+        .errorCode(ErrorCode.DESTINATION_URL_IS_INVALID)
+        .httpStatus(HttpStatus.BAD_REQUEST)
         .build());
   }
 }
