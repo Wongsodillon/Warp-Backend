@@ -1,5 +1,6 @@
 package com.warp.warp_backend.controller;
 
+import com.warp.warp_backend.model.response.RestBaseResponse;
 import com.warp.warp_backend.model.response.RestListContentResponse;
 import com.warp.warp_backend.model.response.RestSingleResponse;
 import com.warp.warp_backend.util.RequestContextHelper;
@@ -7,6 +8,13 @@ import com.warp.warp_backend.util.RequestContextHelper;
 import java.util.List;
 
 public class BaseController {
+
+  public RestBaseResponse toBaseResponse() {
+    return RestBaseResponse.parentBuilder()
+        .requestId(RequestContextHelper.getRequestId())
+        .success(true)
+        .build();
+  }
 
   public <T> RestSingleResponse<T> toResponseSingleResponse(T data) {
     return RestSingleResponse.<T>builder()

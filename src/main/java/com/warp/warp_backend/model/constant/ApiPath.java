@@ -7,6 +7,8 @@ public final class ApiPath {
 
   public static final String LIST_USER_URLS = "/api/urls";
 
+  public static final String DELETE_URL = "/api/urls/{id}";
+
   public static final String VERIFY_PASSWORD = "/{shortUrl}/verify";
 
   public static final String ACTUATOR_HEALTH = "/actuator/health";

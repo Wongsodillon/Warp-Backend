@@ -154,6 +154,21 @@ public class UrlService {
         .build();
   }
 
+  public void deleteUrl(Long id) {
+    Url url = urlRepository.findById(id)
+        .orElseThrow(() -> new NotFoundException(ErrorCode.DESTINATION_URL_NOT_FOUND));
+    if (Objects.nonNull(url.getDeletedDate())) {
+      throw new NotFoundException(ErrorCode.DESTINATION_URL_NOT_FOUND);
+    }
+    Long currentUserId = currentUserService.getCurrentUserId();
+    if (!currentUserId.equals(url.getUserId())) {
+      throw new BaseException(ErrorCode.URL_ACCESS_FORBIDDEN);
+    }
+    url.setDeletedDate(Instant.now());
+    urlRepository.save(url);
+    urlCacheService.evictUrl(url.getShortUrl());
+  }
+
   public String verifyPassword(String shortUrl, String submittedPassword) {
     Url url = urlRepository.findByShortUrl(shortUrl)
         .orElseThrow(() -> new NotFoundException(ErrorCode.DESTINATION_URL_NOT_FOUND));

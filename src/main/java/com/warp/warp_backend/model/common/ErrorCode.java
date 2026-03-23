@@ -15,6 +15,8 @@ public enum ErrorCode {
   CUSTOM_SHORT_URL_INVALID_FORMAT(400, "ERR-400005", "Custom short URL may only contain letters, digits, hyphens, and underscores"),
 
   UNAUTHENTICATED(401,"ERR-401001", "Unauthenticated User"),
+
+  URL_ACCESS_FORBIDDEN(403, "ERR-403001", "You do not have access to this URL"),
   INVALID_PASSWORD(401, "ERR-401002", "Invalid password"),
 
   EXPIRES_AT_IN_THE_PAST(400, "ERR-400006", "Expiry date must be in the future"),

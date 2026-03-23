@@ -9,6 +9,7 @@ import com.warp.warp_backend.model.request.CreateUrlRequest;
 import com.warp.warp_backend.model.request.VerifyPasswordRequest;
 import com.warp.warp_backend.model.response.CreateUrlResponse;
 import com.warp.warp_backend.model.response.RedirectResponse;
+import com.warp.warp_backend.model.response.RestBaseResponse;
 import com.warp.warp_backend.model.response.RestListContentResponse;
 import com.warp.warp_backend.model.response.RestSingleResponse;
 import com.warp.warp_backend.model.response.UrlResponse;
@@ -31,6 +32,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -169,6 +171,20 @@ public class UrlController extends BaseController {
     List<UrlResponse> content = urlService.getUserUrls(page, size, sortBy, sortDir, active, isProtected);
     long total = urlService.countUserUrls(active, isProtected);
     return this.toResponseListContentResponse(content, page, size, total);
+  }
+
+  @Operation(summary = "Delete a URL", description = "Soft-deletes the URL with the given ID. Only the owner may delete.")
+  @SecurityRequirement(name = "bearerAuth")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "URL deleted"),
+      @ApiResponse(responseCode = "403", description = "URL belongs to a different user"),
+      @ApiResponse(responseCode = "404", description = "URL not found")
+  })
+  @DeleteMapping(path = ApiPath.DELETE_URL, produces = MediaType.APPLICATION_JSON_VALUE)
+  public RestBaseResponse deleteUrl(
+      @Parameter(description = "URL ID") @PathVariable Long id) {
+    urlService.deleteUrl(id);
+    return this.toBaseResponse();
   }
 
   @Operation(summary = "Create a short URL", description = "Creates a shortened URL. Optionally supports custom short codes, password protection, and expiry. Requires Clerk JWT authentication.")
