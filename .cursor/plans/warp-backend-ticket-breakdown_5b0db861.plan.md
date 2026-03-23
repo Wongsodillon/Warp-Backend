@@ -157,9 +157,9 @@ Treat each bullet as a separate ticket unless noted otherwise.
   - **Done when**: custom codes are accepted and stored, collisions are rejected with clear error messages.
 3. **List & paginate user URLs**
   - Implement `GET /api/urls` scoped to current `user_id` with pagination parameters (page, size, sort).  
-  - Support basic filters: active vs expired, protected vs not, deleted vs not.  
+  - Support basic filters: active vs expired, protected vs not. 
   - Return minimal data for dashboard list: `shortUrl`, `originalUrl`, `createdAt`, `expiresAt`, `isProtected`, `disabled`.  
-  - **Done when**: a user can fetch multiple pages of their URLs with stable ordering.
+  - **Done when**: a user can fetch multiple pages of their URLs with stable ordering and not fetch soft deleted URLs.
 4. **Soft delete URL endpoint**
   - Implement `DELETE /api/urls/{id}` that sets `deleted_at` instead of hard-delete.  
   - Enforce ownership (user can delete only their URLs).  

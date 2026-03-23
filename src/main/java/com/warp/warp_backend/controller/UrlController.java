@@ -9,7 +9,9 @@ import com.warp.warp_backend.model.request.CreateUrlRequest;
 import com.warp.warp_backend.model.request.VerifyPasswordRequest;
 import com.warp.warp_backend.model.response.CreateUrlResponse;
 import com.warp.warp_backend.model.response.RedirectResponse;
+import com.warp.warp_backend.model.response.RestListContentResponse;
 import com.warp.warp_backend.model.response.RestSingleResponse;
+import com.warp.warp_backend.model.response.UrlResponse;
 import com.warp.warp_backend.model.response.VerifyPasswordResponse;
 import com.warp.warp_backend.service.GeoLocationService;
 import com.warp.warp_backend.service.UrlEventPublisher;
@@ -33,7 +35,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 import java.time.Instant;
 import java.util.Objects;
@@ -145,6 +150,25 @@ public class UrlController extends BaseController {
     return this.toResponseSingleResponse(VerifyPasswordResponse.builder()
             .destinationUrl(destinationUrl)
         .build());
+  }
+
+  @Operation(summary = "List user URLs", description = "Returns a paginated list of the authenticated user's shortened URLs. Supports filtering by active/expired status and protection. Excludes soft-deleted URLs.")
+  @SecurityRequirement(name = "bearerAuth")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Paginated list of URLs"),
+      @ApiResponse(responseCode = "401", description = "Unauthenticated")
+  })
+  @GetMapping(path = ApiPath.LIST_USER_URLS, produces = MediaType.APPLICATION_JSON_VALUE)
+  public RestListContentResponse<UrlResponse> getUserUrls(
+      @Parameter(description = "Page number (0-based)", example = "0") @RequestParam(defaultValue = "0") int page,
+      @Parameter(description = "Page size", example = "10") @RequestParam(defaultValue = "10") int size,
+      @Parameter(description = "Sort field: createdDate, expiryDate, shortUrl", example = "createdDate") @RequestParam(defaultValue = "createdDate") String sortBy,
+      @Parameter(description = "Sort direction: asc or desc", example = "desc") @RequestParam(defaultValue = "desc") String sortDir,
+      @Parameter(description = "Filter by active (true) or expired (false). Omit for all.") @RequestParam(required = false) Boolean active,
+      @Parameter(description = "Filter by password-protected (true) or not (false). Omit for all.") @RequestParam(required = false) Boolean isProtected) {
+    List<UrlResponse> content = urlService.getUserUrls(page, size, sortBy, sortDir, active, isProtected);
+    long total = urlService.countUserUrls(active, isProtected);
+    return this.toResponseListContentResponse(content, page, size, total);
   }
 
   @Operation(summary = "Create a short URL", description = "Creates a shortened URL. Optionally supports custom short codes, password protection, and expiry. Requires Clerk JWT authentication.")

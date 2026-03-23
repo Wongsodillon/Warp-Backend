@@ -10,6 +10,7 @@ import com.warp.warp_backend.model.general.UrlStatus;
 import com.warp.warp_backend.model.request.CreateUrlRequest;
 import com.warp.warp_backend.model.response.CreateUrlResponse;
 import com.warp.warp_backend.model.response.RedirectResponse;
+import com.warp.warp_backend.model.response.UrlResponse;
 import com.warp.warp_backend.properties.ApplicationProperties;
 import com.warp.warp_backend.repository.UrlRepository;
 import com.warp.warp_backend.service.util.UrlServiceUtil;
@@ -23,9 +24,11 @@ import org.springframework.stereotype.Service;
 import java.net.URI;
 import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Service
 public class UrlService {
@@ -126,6 +129,28 @@ public class UrlService {
             .orElse(null))
         .isProtected(isProtected)
         .password(isProtected ? passwordEncoder.encode(request.getPassword()) : null)
+        .build();
+  }
+
+  public List<UrlResponse> getUserUrls(int page, int size, String sortBy, String sortDir,
+      Boolean active, Boolean isProtected) {
+    Long userId = currentUserService.getCurrentUserId();
+    List<Url> urls = urlRepository.findUserUrls(userId, active, isProtected, page, size, sortBy, sortDir);
+    return urls.stream().map(this::toUrlResponse).collect(Collectors.toList());
+  }
+
+  public long countUserUrls(Boolean active, Boolean isProtected) {
+    Long userId = currentUserService.getCurrentUserId();
+    return urlRepository.countUserUrls(userId, active, isProtected);
+  }
+
+  private UrlResponse toUrlResponse(Url url) {
+    return UrlResponse.builder()
+        .shortUrl(urlServiceUtil.formatUrl(url.getShortUrl()))
+        .originalUrl(url.getDestinationUrl())
+        .createdAt(url.getCreatedDate())
+        .expiresAt(url.getExpiryDate())
+        .isProtected(url.isProtected())
         .build();
   }
 
