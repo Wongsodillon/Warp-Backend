@@ -173,7 +173,7 @@ public class UrlController extends BaseController {
     return this.toResponseListContentResponse(content, page, size, total);
   }
 
-  @Operation(summary = "Delete a URL", description = "Soft-deletes the URL with the given ID. Only the owner may delete.")
+  @Operation(summary = "Delete a URL", description = "Soft-deletes the URL with the given short code. Only the owner may delete.")
   @SecurityRequirement(name = "bearerAuth")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "URL deleted"),
@@ -182,8 +182,8 @@ public class UrlController extends BaseController {
   })
   @DeleteMapping(path = ApiPath.DELETE_URL, produces = MediaType.APPLICATION_JSON_VALUE)
   public RestBaseResponse deleteUrl(
-      @Parameter(description = "URL ID") @PathVariable Long id) {
-    urlService.deleteUrl(id);
+      @Parameter(description = "Short URL code") @PathVariable String shortUrl) {
+    urlService.deleteUrl(shortUrl);
     return this.toBaseResponse();
   }
 

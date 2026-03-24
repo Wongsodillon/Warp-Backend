@@ -154,8 +154,8 @@ public class UrlService {
         .build();
   }
 
-  public void deleteUrl(Long id) {
-    Url url = urlRepository.findById(id)
+  public void deleteUrl(String shortUrl) {
+    Url url = urlRepository.findByShortUrl(shortUrl)
         .orElseThrow(() -> new NotFoundException(ErrorCode.DESTINATION_URL_NOT_FOUND));
     if (Objects.nonNull(url.getDeletedDate())) {
       throw new NotFoundException(ErrorCode.DESTINATION_URL_NOT_FOUND);

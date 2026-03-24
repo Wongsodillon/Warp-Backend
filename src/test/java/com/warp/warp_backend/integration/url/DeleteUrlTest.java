@@ -72,7 +72,7 @@ public class DeleteUrlTest extends BaseIntegrationContextTest {
     Long userId = resolveTestUserId();
     Url url = urlRepository.save(buildUrl(userId, "del-url-1"));
 
-    mockMvc.perform(withAuth(delete(ApiPath.DELETE_URL, url.getId())))
+    mockMvc.perform(withAuth(delete(ApiPath.DELETE_URL, url.getShortUrl())))
         .andExpect(status().isOk())
         .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(true));
   }
@@ -84,7 +84,7 @@ public class DeleteUrlTest extends BaseIntegrationContextTest {
     Long userId = resolveTestUserId();
     Url url = urlRepository.save(buildUrl(userId, "del-url-2"));
 
-    mockMvc.perform(withAuth(delete(ApiPath.DELETE_URL, url.getId())))
+    mockMvc.perform(withAuth(delete(ApiPath.DELETE_URL, url.getShortUrl())))
         .andExpect(status().isOk());
 
     Url updated = urlRepository.findById(url.getId()).orElseThrow();
@@ -106,7 +106,7 @@ public class DeleteUrlTest extends BaseIntegrationContextTest {
         .build());
     Assertions.assertNotNull(redisTemplate.opsForValue().get(cacheKey), "Cache should be populated before delete");
 
-    mockMvc.perform(withAuth(delete(ApiPath.DELETE_URL, url.getId())))
+    mockMvc.perform(withAuth(delete(ApiPath.DELETE_URL, url.getShortUrl())))
         .andExpect(status().isOk());
 
     Assertions.assertNull(redisTemplate.opsForValue().get(cacheKey), "Cache should be evicted after delete");
@@ -130,7 +130,7 @@ public class DeleteUrlTest extends BaseIntegrationContextTest {
     mockAuthForUser(TestConstant.TEST_CLERK_USER_ID);
     mockMvc.perform(withAuth(get(ApiPath.LIST_USER_URLS))).andReturn();
 
-    mockMvc.perform(withAuth(delete(ApiPath.DELETE_URL, url.getId())))
+    mockMvc.perform(withAuth(delete(ApiPath.DELETE_URL, url.getShortUrl())))
         .andExpect(status().isForbidden())
         .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(false))
         .andExpect(MockMvcResultMatchers.jsonPath("$.errorCode").value(ErrorCode.URL_ACCESS_FORBIDDEN.getCode()));
@@ -138,7 +138,7 @@ public class DeleteUrlTest extends BaseIntegrationContextTest {
 
   @Test
   void deleteUrl_notFound_returns404() throws Exception {
-    mockMvc.perform(withAuth(delete(ApiPath.DELETE_URL, 999999L)))
+    mockMvc.perform(withAuth(delete(ApiPath.DELETE_URL, "nonexistent")))
         .andExpect(status().isNotFound())
         .andExpect(MockMvcResultMatchers.jsonPath("$.success").value(false))
         .andExpect(MockMvcResultMatchers.jsonPath("$.errorCode").value(ErrorCode.DESTINATION_URL_NOT_FOUND.getCode()));
@@ -158,14 +158,14 @@ public class DeleteUrlTest extends BaseIntegrationContextTest {
         .build();
     urlRepository.save(url);
 
-    mockMvc.perform(withAuth(delete(ApiPath.DELETE_URL, url.getId())))
+    mockMvc.perform(withAuth(delete(ApiPath.DELETE_URL, url.getShortUrl())))
         .andExpect(status().isNotFound())
         .andExpect(MockMvcResultMatchers.jsonPath("$.errorCode").value(ErrorCode.DESTINATION_URL_NOT_FOUND.getCode()));
   }
 
   @Test
   void deleteUrl_unauthenticated_returns401() throws Exception {
-    mockMvc.perform(delete(ApiPath.DELETE_URL, 1L))
+    mockMvc.perform(delete(ApiPath.DELETE_URL, "someurl"))
         .andExpect(status().isUnauthorized());
   }
 }
