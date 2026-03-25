@@ -21,24 +21,19 @@ public class UrlEventPublisher {
   private KafkaTemplate<String, UrlClickEvent> urlClickEventKafkaTemplate;
 
   public void publish(UrlClickEvent event) {
-    try {
-      CompletableFuture<SendResult<String, UrlClickEvent>> future =
-          urlClickEventKafkaTemplate.send(KafkaTopic.URL_CLICK_EVENTS, event);
-      future.handle((sendResult, throwable) -> {
-        if (Objects.nonNull(throwable)) {
-          LOGGER.warn("[publisher:FAILED] shortUrl={} eventId={}: {}",
-              event.getShortUrl(), event.getEventId(), throwable.getMessage());
-        } else {
-          LOGGER.info("[publisher:ACK] shortUrl={} eventId={} partition={} offset={}",
-              event.getShortUrl(), event.getEventId(),
-              sendResult.getRecordMetadata().partition(),
-              sendResult.getRecordMetadata().offset());
-        }
-        return null;
-      });
-    } catch (Exception e) {
-      LOGGER.warn("[publisher:FAILED] shortUrl={} eventId={}: {}",
-          event.getShortUrl(), event.getEventId(), e.getMessage());
-    }
+    CompletableFuture<SendResult<String, UrlClickEvent>> future =
+        urlClickEventKafkaTemplate.send(KafkaTopic.URL_CLICK_EVENTS, event);
+    future.handle((sendResult, throwable) -> {
+      if (Objects.nonNull(throwable)) {
+        LOGGER.warn("[publisher:FAILED] shortUrl={} eventId={}: {}",
+            event.getShortUrl(), event.getEventId(), throwable.getMessage());
+      } else {
+        LOGGER.info("[publisher:ACK] shortUrl={} eventId={} partition={} offset={}",
+            event.getShortUrl(), event.getEventId(),
+            sendResult.getRecordMetadata().partition(),
+            sendResult.getRecordMetadata().offset());
+      }
+      return null;
+    });
   }
 }

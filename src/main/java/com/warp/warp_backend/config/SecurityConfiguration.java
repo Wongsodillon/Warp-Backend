@@ -10,9 +10,8 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.JwtTimestampValidator;
+import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
@@ -36,9 +35,9 @@ public class SecurityConfiguration {
   @Bean
   public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration config = new CorsConfiguration();
-    config.setAllowedOrigins(List.of(applicationProperties.getFrontendUrl()));
+    config.setAllowedOrigins(applicationProperties.getAllowedOrigins());
     config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-    config.setAllowedHeaders(List.of("*"));
+    config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With"));
     config.setAllowCredentials(true);
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/**", config);
@@ -51,7 +50,7 @@ public class SecurityConfiguration {
         .withJwkSetUri(applicationProperties.getJwksUri())
         .build();
 
-    decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(new JwtTimestampValidator()));
+    decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(applicationProperties.getJwtIssuer()));
 
     return decoder;
   }
@@ -59,10 +58,12 @@ public class SecurityConfiguration {
   @Bean
   @Order(0)
   public SecurityFilterChain actuatorFilterChain(HttpSecurity http,
-      ClerkJwtAuthenticationConverter converter) throws Exception {
+      ClerkJwtAuthenticationConverter converter,
+      CorsConfigurationSource corsConfigurationSource) throws Exception {
     http
         .securityMatcher("/actuator/**")
         .csrf(csrf -> csrf.disable())
+        .cors(cors -> cors.configurationSource(corsConfigurationSource))
         .authorizeHttpRequests(auth -> auth
             .requestMatchers("/actuator/prometheus").permitAll()
             .anyRequest().hasRole("ADMIN"))
