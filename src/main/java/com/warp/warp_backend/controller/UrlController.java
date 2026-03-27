@@ -95,6 +95,7 @@ public class UrlController extends BaseController {
       UrlClickEvent event = UrlClickEvent.builder()
           .eventId(UUID.randomUUID())
           .urlId(redirectResponse.getUrlId())
+          .userId(redirectResponse.getUserId())
           .shortUrl(shortUrl)
           .timestamp(Instant.now())
           .countryCode(countryCode)
