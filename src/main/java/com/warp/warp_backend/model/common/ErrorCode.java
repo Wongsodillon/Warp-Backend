@@ -27,6 +27,8 @@ public enum ErrorCode {
 
   URL_EXPIRED(410, "ERR-410001", "URL has expired"),
 
+  INVALID_PERIOD(400, "ERR-400007", "Period must be one of: 1h, 6h, 1d, 7d, 30d"),
+
   UNSPECIFIED(500, "ERR-500001", "Unspecified error");
 
   private final int httpStatus;

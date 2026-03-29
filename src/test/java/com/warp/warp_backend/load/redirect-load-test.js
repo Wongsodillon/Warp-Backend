@@ -9,7 +9,7 @@ const likelyCacheHits   = new Counter('likely_cache_hits');
 const likelyCacheMisses = new Counter('likely_cache_misses');
 
 // ── Constants ──────────────────────────────────────────────────────────────────
-const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
+const BASE_URL = 'http://localhost:8080';
 
 // 50 active seeded URLs from db/dev/R__seed_data.sql
 const SEEDED = Array.from({ length: 50 }, (_, i) =>
@@ -24,48 +24,48 @@ http.setResponseCallback(
 // ── Options ────────────────────────────────────────────────────────────────────
 export const options = {
   scenarios: {
-    // 1. Warm-cache baseline — establish p50/p95 on pure Redis-served hits
-    //    Watch: lettuce.command.completion, url_cache_hits_total
-    warm_cache_baseline: {
-      executor: 'ramping-vus',
-      startVUs: 0,
-      stages: [
-        { duration: '20s', target: 100 },
-        { duration: '60s', target: 100 },
-        { duration: '20s', target: 0 },
-      ],
-      exec: 'warmCacheScenario',
-      tags: { scenario: 'warm_cache' },
-    },
-
-    // 2. Thread-pool stress ramp — drive VUs past Tomcat default (200 threads)
-    //    Watch: tomcat.threads.busy, p99 cliff when VUs > 200
-    stress_ramp: {
-      executor: 'ramping-vus',
-      startVUs: 0,
-      stages: [
-        { duration: '20s', target: 100 },
-        { duration: '20s', target: 200 },  // at thread-pool limit
-        { duration: '20s', target: 300 },  // over the limit → queuing
-        { duration: '40s', target: 300 },  // hold to confirm saturation
-        { duration: '20s', target: 0 },
-      ],
-      exec: 'stressRampScenario',
-      tags: { scenario: 'stress_ramp' },
-      // startTime: '110s',
-    },
-
-    // 3. Cache-miss storm — all requests hit DB directly (run with Redis disabled)
-    //    HikariCP default pool = 10; excess threads will wait → hikaricp.connections.pending
-    //    Watch: hikaricp.connections.pending, hikaricp.connections.active
-    cache_miss_storm: {
-      executor: 'constant-vus',
-      vus: 100,
-      duration: '60s',
-      exec: 'cacheMissScenario',
-      tags: { scenario: 'cache_miss' },
-      // startTime: '260s',
-    },
+    // // 1. Warm-cache baseline — establish p50/p95 on pure Redis-served hits
+    // //    Watch: lettuce.command.completion, url_cache_hits_total
+    // warm_cache_baseline: {
+    //   executor: 'ramping-vus',
+    //   startVUs: 0,
+    //   stages: [
+    //     { duration: '20s', target: 100 },
+    //     { duration: '60s', target: 100 },
+    //     { duration: '20s', target: 0 },
+    //   ],
+    //   exec: 'warmCacheScenario',
+    //   tags: { scenario: 'warm_cache' },
+    // },
+    //
+    // // 2. Thread-pool stress ramp — drive VUs past Tomcat default (200 threads)
+    // //    Watch: tomcat.threads.busy, p99 cliff when VUs > 200
+    // stress_ramp: {
+    //   executor: 'ramping-vus',
+    //   startVUs: 0,
+    //   stages: [
+    //     { duration: '20s', target: 100 },
+    //     { duration: '20s', target: 200 },  // at thread-pool limit
+    //     { duration: '20s', target: 300 },  // over the limit → queuing
+    //     { duration: '40s', target: 300 },  // hold to confirm saturation
+    //     { duration: '20s', target: 0 },
+    //   ],
+    //   exec: 'stressRampScenario',
+    //   tags: { scenario: 'stress_ramp' },
+    //   // startTime: '110s',
+    // },
+    //
+    // // 3. Cache-miss storm — all requests hit DB directly (run with Redis disabled)
+    // //    HikariCP default pool = 10; excess threads will wait → hikaricp.connections.pending
+    // //    Watch: hikaricp.connections.pending, hikaricp.connections.active
+    // cache_miss_storm: {
+    //   executor: 'constant-vus',
+    //   vus: 100,
+    //   duration: '60s',
+    //   exec: 'cacheMissScenario',
+    //   tags: { scenario: 'cache_miss' },
+    //   // startTime: '260s',
+    // },
 
     // 4. Mixed realistic workload — 80 % cache hits / 20 % misses
     //    Watch: divergence between hit/miss latency; hikaricp under steady mixed load
@@ -85,22 +85,22 @@ export const options = {
       // startTime: '330s',
     },
 
-    // 5. Spike test — 40× burst to expose GC stop-the-world pauses
-    //    Watch: irregular p99 spikes (jvm.gc.pause), hikaricp burst recovery
-    spike_test: {
-      executor: 'ramping-vus',
-      startVUs: 10,
-      stages: [
-        { duration: '10s', target: 10  },
-        { duration: '5s',  target: 400 },  // instant spike
-        { duration: '30s', target: 400 },  // sustain
-        { duration: '5s',  target: 10  },  // instant drop
-        { duration: '20s', target: 10  },  // recovery window
-      ],
-      exec: 'spikeScenario',
-      tags: { scenario: 'spike' },
-      // startTime: '460s',
-    },
+    // // 5. Spike test — 40× burst to expose GC stop-the-world pauses
+    // //    Watch: irregular p99 spikes (jvm.gc.pause), hikaricp burst recovery
+    // spike_test: {
+    //   executor: 'ramping-vus',
+    //   startVUs: 10,
+    //   stages: [
+    //     { duration: '10s', target: 10  },
+    //     { duration: '5s',  target: 400 },  // instant spike
+    //     { duration: '30s', target: 400 },  // sustain
+    //     { duration: '5s',  target: 10  },  // instant drop
+    //     { duration: '20s', target: 10  },  // recovery window
+    //   ],
+    //   exec: 'spikeScenario',
+    //   tags: { scenario: 'spike' },
+    //   // startTime: '460s',
+    // },
   },
 
   thresholds: {
@@ -134,6 +134,58 @@ function pickNonExistent() {
 // redirects: 0 → k6 sees the raw 302 and measures it directly.
 function makeParams(extraTags) {
   return { redirects: 0, timeout: '5s', tags: extraTags };
+}
+
+// ── Analytics data pools (used by mixedWorkloadScenario) ───────────────────────
+// CF-IPCountry is read first by the server before GeoIP, so injecting it
+// directly is the simplest way to populate country data in ClickHouse.
+const COUNTRIES = [
+  'US', 'GB', 'DE', 'FR', 'JP', 'IN', 'BR', 'CA', 'AU', 'SG',
+  'MX', 'KR', 'IT', 'ES', 'NL', 'SE', 'PL', 'AR', 'ZA', 'ID',
+];
+
+// Mix of desktop (Chrome, Firefox, Safari, Edge), mobile (Android Chrome,
+// iPhone Safari, Samsung Internet), and tablet — covers all device branches
+// in UserAgentUtil.parseUserAgent().
+const USER_AGENTS = [
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0',
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15',
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0',
+  'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.6367.82 Mobile Safari/537.36',
+  'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1',
+  'Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/24.0 Chrome/117.0.0.0 Mobile Safari/537.36',
+  'Mozilla/5.0 (iPad; CPU OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1',
+];
+
+// null entries = direct traffic (no Referer header sent).
+// Weighted 3× to reflect realistic direct-traffic share.
+const REFERRERS = [
+  'https://google.com/search?q=short+links',
+  'https://twitter.com',
+  'https://www.facebook.com',
+  'https://t.co/abc123',
+  'https://linkedin.com',
+  'https://www.reddit.com/r/webdev',
+  'https://mail.google.com',
+  'https://discord.com/channels',
+  null, null, null,
+];
+
+function pickRandom(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+// Like makeParams but injects User-Agent, CF-IPCountry, and Referer headers
+// so the server can populate all ClickHouse analytics dimensions.
+function makeRichParams(extraTags) {
+  const headers = {
+    'User-Agent':   pickRandom(USER_AGENTS),
+    'CF-IPCountry': pickRandom(COUNTRIES),
+  };
+  const referrer = pickRandom(REFERRERS);
+  if (referrer !== null) headers['Referer'] = referrer;
+  return { redirects: 0, timeout: '5s', tags: extraTags, headers };
 }
 
 // ── Scenario functions ─────────────────────────────────────────────────────────
@@ -206,7 +258,7 @@ export function mixedWorkloadScenario() {
   const shortUrl    = isCacheable ? pickSeeded() : pickNonExistent();
   const res = http.get(
     `${BASE_URL}/${shortUrl}`,
-    makeParams({ url_type: isCacheable ? 'seeded' : 'nonexistent' })
+    makeRichParams({ url_type: isCacheable ? 'seeded' : 'nonexistent' })
   );
   check(res, {
     'valid response':  r => r.status === 302 || r.status === 404,

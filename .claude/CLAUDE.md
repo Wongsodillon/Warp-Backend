@@ -94,12 +94,12 @@ Kafka events flow: Spring producer → Kafka topic `url.click.event` → ClickHo
 ### Tables
 
 **click_events_raw** — raw click events, 30-day TTL
-- Columns: event_id (String), url_id (UInt64), user_id (String), short_url (String), timestamp (DateTime64(3, 'UTC')), country_code (LowCardinality(String)), device_type (LowCardinality(String)), browser (LowCardinality(String)), referrer (Nullable(String)), response_latency_ms (UInt64)
+- Columns: event_id (String), url_id (UInt64), user_id (UInt64), short_url (String), timestamp (DateTime64(3, 'UTC')), country_code (LowCardinality(String)), device_type (LowCardinality(String)), browser (LowCardinality(String)), referrer (Nullable(String)), response_latency_ms (UInt64)
 - ORDER BY (url_id, timestamp)
 
 **minute_analytics** — 1-minute rollup, AggregatingMergeTree
-- Columns: minute (DateTime), url_id (UInt64), user_id (String), country_code (LowCardinality(String)), device_type (LowCardinality(String)), browser (LowCardinality(String)), clicks (AggregateFunction(count)), avg_latency (AggregateFunction(avg, UInt32))
-- ORDER BY (user_id, url_id, minute)
+- Columns: minute (DateTime), url_id (UInt64), country_code (LowCardinality(String)), device_type (LowCardinality(String)), browser (LowCardinality(String)), referrer (LowCardinality(Nullable(String))), clicks (AggregateFunction(count)), avg_latency (AggregateFunction(avg, UInt32))
+- ORDER BY (url_id, minute)
 
 ### Query Patterns
 
@@ -117,24 +117,13 @@ SELECT device_type, countMerge(clicks) AS total_clicks FROM minute_analytics WHE
 -- Clicks by browser
 SELECT browser, countMerge(clicks) AS total_clicks FROM minute_analytics WHERE url_id = ? GROUP BY browser ORDER BY total_clicks DESC;
 
--- Referrer analytics (from raw table, not rollup)
-SELECT referrer, count() AS total_clicks FROM click_events_raw WHERE url_id = ? AND timestamp >= now() - INTERVAL ? DAY GROUP BY referrer ORDER BY total_clicks DESC;
+-- Referrer analytics
+SELECT referrer, countMerge(clicks) AS total_clicks FROM minute_analytics WHERE url_id = ? AND minute >= now() - INTERVAL ? DAY GROUP BY referrer ORDER BY total_clicks DESC;
 
 -- Time-series (clicks per minute/hour)
 SELECT minute, countMerge(clicks) AS total_clicks FROM minute_analytics WHERE url_id = ? AND minute >= now() - INTERVAL ? DAY GROUP BY minute ORDER BY minute;
 
-### API Endpoints Needed
-
-All analytics endpoints require auth. User can only query analytics for URLs they own.
-
-- GET /api/analytics/{urlId}/summary?window=7d — total clicks, avg latency for a URL within time window
-- GET /api/analytics/{urlId}/countries?window=7d — clicks grouped by country
-- GET /api/analytics/{urlId}/devices?window=7d — clicks grouped by device type
-- GET /api/analytics/{urlId}/browsers?window=7d — clicks grouped by browser
-- GET /api/analytics/{urlId}/referrers?window=7d — clicks grouped by referrer (queries raw table)
-- GET /api/analytics/{urlId}/timeseries?window=7d&granularity=1h — clicks over time
-
-Supported windows: 1h, 4h, 1d, 3d, 7d, 30d
+Supported windows: 1d, 3d, 7d, 30d
 
 ### ClickHouse JDBC
 
