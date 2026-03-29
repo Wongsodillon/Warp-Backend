@@ -58,17 +58,14 @@ public class SecurityConfiguration {
   @Bean
   @Order(0)
   public SecurityFilterChain actuatorFilterChain(HttpSecurity http,
-      ClerkJwtAuthenticationConverter converter,
       CorsConfigurationSource corsConfigurationSource) throws Exception {
     http
         .securityMatcher("/actuator/**")
         .csrf(csrf -> csrf.disable())
         .cors(cors -> cors.configurationSource(corsConfigurationSource))
         .authorizeHttpRequests(auth -> auth
-            .requestMatchers("/actuator/prometheus").permitAll()
-            .anyRequest().hasRole("ADMIN"))
-        .oauth2ResourceServer(oauth -> oauth
-            .jwt(jwt -> jwt.jwtAuthenticationConverter(converter)));
+            .requestMatchers("/actuator/health", "/actuator/prometheus").permitAll()
+            .anyRequest().denyAll());
     return http.build();
   }
 
