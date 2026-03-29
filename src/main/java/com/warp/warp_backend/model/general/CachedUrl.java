@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class CachedUrl {
     private Long urlId;
+    private Long userId;
     private String shortUrl;
     private UrlStatus status;
     private String destinationUrl;

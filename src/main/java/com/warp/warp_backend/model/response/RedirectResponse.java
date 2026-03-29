@@ -15,4 +15,5 @@ public class RedirectResponse {
   private URI location;
   private String shortUrl;
   private Long urlId;
+  private Long userId;
 }

@@ -73,6 +73,7 @@ public class UrlService {
       return RedirectResponse.builder()
           .shortUrl(shortUrl)
           .urlId(cached.getUrlId())
+          .userId(cached.getUserId())
           .location(URI.create(applicationProperties.getFrontendUrl() + "/" + cached.getShortUrl() + ApiPath.PASSWORD))
           .build();
     }
@@ -81,6 +82,7 @@ public class UrlService {
         .shortUrl(shortUrl)
         .location(URI.create(cached.getDestinationUrl()))
         .urlId(cached.getUrlId())
+        .userId(cached.getUserId())
         .build();
   }
 

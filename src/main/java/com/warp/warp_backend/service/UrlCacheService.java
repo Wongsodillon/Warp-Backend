@@ -104,6 +104,7 @@ public class UrlCacheService {
             .isProtected(u.isProtected())
             .shortUrl(u.getShortUrl())
             .urlId(u.getId())
+            .userId(u.getUserId())
             .build(), ttl))
         .orElseGet(() -> cacheAndReturn(key, CachedUrl.builder()
             .status(UrlStatus.EXPIRED)

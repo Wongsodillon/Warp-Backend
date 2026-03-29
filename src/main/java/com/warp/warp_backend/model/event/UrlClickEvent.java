@@ -15,6 +15,7 @@ import java.util.UUID;
 public class UrlClickEvent {
   private UUID eventId;
   private Long urlId;
+  private Long userId;
   private String shortUrl;
   private Instant timestamp;
   private String countryCode;
