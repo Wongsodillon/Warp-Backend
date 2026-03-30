@@ -5,10 +5,17 @@ import com.warp.warp_backend.model.entity.Url;
 import com.warp.warp_backend.model.enums.Period;
 import com.warp.warp_backend.model.exception.BaseException;
 import com.warp.warp_backend.model.exception.NotFoundException;
+import com.warp.warp_backend.model.response.BreakdownItem;
+import com.warp.warp_backend.model.response.BreakdownResponse;
 import com.warp.warp_backend.model.response.TimeSeriesDataPoint;
 import com.warp.warp_backend.model.response.TimeSeriesResponse;
+import com.warp.warp_backend.model.response.TopUrlTimeSeriesEntry;
+import com.warp.warp_backend.model.response.TopUrlsTimeSeriesResponse;
+import com.warp.warp_backend.model.response.UrlClicksAggregate;
+import com.warp.warp_backend.properties.ApplicationProperties;
 import com.warp.warp_backend.repository.ClickHouseAnalyticsRepository;
 import com.warp.warp_backend.repository.UrlRepository;
+import com.warp.warp_backend.service.util.UrlServiceUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -17,6 +24,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -33,6 +41,12 @@ public class AnalyticsService {
 
   @Autowired
   private ClickHouseAnalyticsRepository clickHouseAnalyticsRepository;
+
+  @Autowired
+  private UrlServiceUtil urlServiceUtil;
+
+  @Autowired
+  private ApplicationProperties applicationProperties;
 
   public TimeSeriesResponse getClicksTimeSeries(Long urlId, String periodValue) {
     Period period = Period.fromValue(periodValue);
@@ -52,16 +66,225 @@ public class AnalyticsService {
       rawData = clickHouseAnalyticsRepository.queryTimeSeriesByUrlId(urlId, period);
     } else {
       List<Long> urlIds = urlRepository.findAllIdsByUserId(currentUserId);
-      System.out.println("urlIds: " + urlIds);
       rawData = clickHouseAnalyticsRepository.queryTimeSeriesByUrlIds(urlIds, period);
     }
-    System.out.println("Raw Data: " + rawData);
 
     List<TimeSeriesDataPoint> filled = zeroFill(rawData, period);
     return TimeSeriesResponse.builder()
         .period(period.getValue())
         .bucket(period.getBucket())
         .data(filled)
+        .build();
+  }
+
+  public TopUrlsTimeSeriesResponse getTopUrlsTimeSeries(String periodValue, int limit) {
+    Period period = Period.fromValue(periodValue);
+    if (Objects.isNull(period)) {
+      throw new BaseException(ErrorCode.INVALID_PERIOD);
+    }
+    if (limit < 1 || limit > applicationProperties.getTopUrlsMaxLimit()) {
+      throw new BaseException(ErrorCode.INVALID_LIMIT);
+    }
+
+    Long currentUserId = currentUserService.getCurrentUserId();
+    List<Long> userUrlIds = urlRepository.findAllIdsByUserId(currentUserId);
+
+    if (userUrlIds.isEmpty()) {
+      return TopUrlsTimeSeriesResponse.builder()
+          .period(period.getValue())
+          .bucket(period.getBucket())
+          .urls(Collections.emptyList())
+          .build();
+    }
+
+    List<UrlClicksAggregate> topUrls = clickHouseAnalyticsRepository.queryTopUrlsByClicks(userUrlIds, period, limit);
+
+    if (topUrls.isEmpty()) {
+      return TopUrlsTimeSeriesResponse.builder()
+          .period(period.getValue())
+          .bucket(period.getBucket())
+          .urls(Collections.emptyList())
+          .build();
+    }
+
+    List<Long> topUrlIds = topUrls.stream().map(UrlClicksAggregate::getUrlId).toList();
+
+    Map<Long, String> shortUrlById = urlRepository.findAllById(topUrlIds).stream()
+        .collect(Collectors.toMap(Url::getId, url -> urlServiceUtil.formatUrl(url.getShortUrl())));
+
+    List<TopUrlTimeSeriesEntry> entries = topUrls.stream()
+        .map(urlTotal -> {
+          List<TimeSeriesDataPoint> raw = clickHouseAnalyticsRepository.queryTimeSeriesByUrlId(urlTotal.getUrlId(), period);
+          List<TimeSeriesDataPoint> filled = zeroFill(raw, period);
+          return TopUrlTimeSeriesEntry.builder()
+              .urlId(urlTotal.getUrlId())
+              .shortUrl(shortUrlById.get(urlTotal.getUrlId()))
+              .totalClicks(urlTotal.getTotalClicks())
+              .timeseries(filled)
+              .build();
+        })
+        .toList();
+
+    return TopUrlsTimeSeriesResponse.builder()
+        .period(period.getValue())
+        .bucket(period.getBucket())
+        .urls(entries)
+        .build();
+  }
+
+  public BreakdownResponse getDeviceBreakdown(Long urlId, String periodValue) {
+    Period period = Period.fromValue(periodValue);
+    if (Objects.isNull(period)) {
+      throw new BaseException(ErrorCode.INVALID_PERIOD);
+    }
+
+    Long currentUserId = currentUserService.getCurrentUserId();
+
+    List<BreakdownItem> items;
+    if (Objects.nonNull(urlId)) {
+      Url url = urlRepository.findById(urlId)
+          .orElseThrow(() -> new NotFoundException(ErrorCode.DESTINATION_URL_NOT_FOUND));
+      if (!url.getUserId().equals(currentUserId)) {
+        throw new BaseException(ErrorCode.URL_ACCESS_FORBIDDEN);
+      }
+      items = clickHouseAnalyticsRepository.queryDeviceBreakdownByUrlId(urlId, period);
+    } else {
+      List<Long> userUrlIds = urlRepository.findAllIdsByUserId(currentUserId);
+      if (userUrlIds.isEmpty()) {
+        return BreakdownResponse.builder()
+            .period(period.getValue())
+            .totalClicks(0)
+            .items(Collections.emptyList())
+            .build();
+      }
+      items = clickHouseAnalyticsRepository.queryDeviceBreakdownByUrlIds(userUrlIds, period);
+    }
+
+    long totalClicks = items.stream().mapToLong(BreakdownItem::getClicks).sum();
+    if (totalClicks == 0) {
+      return BreakdownResponse.builder()
+          .period(period.getValue())
+          .totalClicks(0)
+          .items(Collections.emptyList())
+          .build();
+    }
+
+    List<BreakdownItem> enriched = items.stream()
+        .map(item -> BreakdownItem.builder()
+            .label(item.getLabel())
+            .clicks(item.getClicks())
+            .percentage(Math.round(item.getClicks() * 1000.0 / totalClicks) / 10.0)
+            .build())
+        .toList();
+
+    return BreakdownResponse.builder()
+        .period(period.getValue())
+        .totalClicks(totalClicks)
+        .items(enriched)
+        .build();
+  }
+
+  public BreakdownResponse getCountryBreakdown(Long urlId, String periodValue) {
+    Period period = Period.fromValue(periodValue);
+    if (Objects.isNull(period)) {
+      throw new BaseException(ErrorCode.INVALID_PERIOD);
+    }
+
+    Long currentUserId = currentUserService.getCurrentUserId();
+
+    List<BreakdownItem> items;
+    if (Objects.nonNull(urlId)) {
+      Url url = urlRepository.findById(urlId)
+          .orElseThrow(() -> new NotFoundException(ErrorCode.DESTINATION_URL_NOT_FOUND));
+      if (!url.getUserId().equals(currentUserId)) {
+        throw new BaseException(ErrorCode.URL_ACCESS_FORBIDDEN);
+      }
+      items = clickHouseAnalyticsRepository.queryCountryBreakdownByUrlId(urlId, period);
+    } else {
+      List<Long> userUrlIds = urlRepository.findAllIdsByUserId(currentUserId);
+      if (userUrlIds.isEmpty()) {
+        return BreakdownResponse.builder()
+            .period(period.getValue())
+            .totalClicks(0)
+            .items(Collections.emptyList())
+            .build();
+      }
+      items = clickHouseAnalyticsRepository.queryCountryBreakdownByUrlIds(userUrlIds, period);
+    }
+
+    long totalClicks = items.stream().mapToLong(BreakdownItem::getClicks).sum();
+    if (totalClicks == 0) {
+      return BreakdownResponse.builder()
+          .period(period.getValue())
+          .totalClicks(0)
+          .items(Collections.emptyList())
+          .build();
+    }
+
+    List<BreakdownItem> enriched = items.stream()
+        .map(item -> BreakdownItem.builder()
+            .label(item.getLabel())
+            .clicks(item.getClicks())
+            .percentage(Math.round(item.getClicks() * 1000.0 / totalClicks) / 10.0)
+            .build())
+        .toList();
+
+    return BreakdownResponse.builder()
+        .period(period.getValue())
+        .totalClicks(totalClicks)
+        .items(enriched)
+        .build();
+  }
+
+  public BreakdownResponse getBrowserBreakdown(Long urlId, String periodValue) {
+    Period period = Period.fromValue(periodValue);
+    if (Objects.isNull(period)) {
+      throw new BaseException(ErrorCode.INVALID_PERIOD);
+    }
+
+    Long currentUserId = currentUserService.getCurrentUserId();
+
+    List<BreakdownItem> items;
+    if (Objects.nonNull(urlId)) {
+      Url url = urlRepository.findById(urlId)
+          .orElseThrow(() -> new NotFoundException(ErrorCode.DESTINATION_URL_NOT_FOUND));
+      if (!url.getUserId().equals(currentUserId)) {
+        throw new BaseException(ErrorCode.URL_ACCESS_FORBIDDEN);
+      }
+      items = clickHouseAnalyticsRepository.queryBrowserBreakdownByUrlId(urlId, period);
+    } else {
+      List<Long> userUrlIds = urlRepository.findAllIdsByUserId(currentUserId);
+      if (userUrlIds.isEmpty()) {
+        return BreakdownResponse.builder()
+            .period(period.getValue())
+            .totalClicks(0)
+            .items(Collections.emptyList())
+            .build();
+      }
+      items = clickHouseAnalyticsRepository.queryBrowserBreakdownByUrlIds(userUrlIds, period);
+    }
+
+    long totalClicks = items.stream().mapToLong(BreakdownItem::getClicks).sum();
+    if (totalClicks == 0) {
+      return BreakdownResponse.builder()
+          .period(period.getValue())
+          .totalClicks(0)
+          .items(Collections.emptyList())
+          .build();
+    }
+
+    List<BreakdownItem> enriched = items.stream()
+        .map(item -> BreakdownItem.builder()
+            .label(item.getLabel())
+            .clicks(item.getClicks())
+            .percentage(Math.round(item.getClicks() * 1000.0 / totalClicks) / 10.0)
+            .build())
+        .toList();
+
+    return BreakdownResponse.builder()
+        .period(period.getValue())
+        .totalClicks(totalClicks)
+        .items(enriched)
         .build();
   }
 

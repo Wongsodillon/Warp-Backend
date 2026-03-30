@@ -29,6 +29,8 @@ public enum ErrorCode {
 
   INVALID_PERIOD(400, "ERR-400007", "Period must be one of: 1h, 6h, 1d, 7d, 30d"),
 
+  INVALID_LIMIT(400, "ERR-400008", "Limit must be between 1 and the configured maximum"),
+
   UNSPECIFIED(500, "ERR-500001", "Unspecified error");
 
   private final int httpStatus;
