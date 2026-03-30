@@ -50,14 +50,14 @@ public class AnalyticsService {
         throw new BaseException(ErrorCode.URL_ACCESS_FORBIDDEN);
       }
       rawData = clickHouseAnalyticsRepository.queryTimeSeriesByUrlId(urlId, period);
-      System.out.println("Raw Data: " + rawData);
     } else {
       List<Long> urlIds = urlRepository.findAllIdsByUserId(currentUserId);
+      System.out.println("urlIds: " + urlIds);
       rawData = clickHouseAnalyticsRepository.queryTimeSeriesByUrlIds(urlIds, period);
     }
+    System.out.println("Raw Data: " + rawData);
 
     List<TimeSeriesDataPoint> filled = zeroFill(rawData, period);
-    System.out.println("Filled Data: " + filled);
     return TimeSeriesResponse.builder()
         .period(period.getValue())
         .bucket(period.getBucket())
@@ -75,18 +75,15 @@ public class AnalyticsService {
 
     Instant now = Instant.now();
     Instant start = truncateToBucket(now.minus(period.getDuration()), period);
+    Instant end = truncateToBucket(now, period);
     Duration step = period.stepDuration();
-    int points = period.getExpectedPoints();
 
-    List<TimeSeriesDataPoint> result = new ArrayList<>(points);
-    Instant cursor = start;
-    for (int i = 0; i < points; i++) {
-      long clicks = clicksByTimestamp.getOrDefault(cursor, 0L);
+    List<TimeSeriesDataPoint> result = new ArrayList<>();
+    for (Instant cursor = start; !cursor.isAfter(end); cursor = cursor.plus(step)) {
       result.add(TimeSeriesDataPoint.builder()
           .timestamp(cursor)
-          .clicks(clicks)
+          .clicks(clicksByTimestamp.getOrDefault(cursor, 0L))
           .build());
-      cursor = cursor.plus(step);
     }
 
     return result;
