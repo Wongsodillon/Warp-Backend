@@ -87,4 +87,17 @@ public class AnalyticsController extends BaseController {
     BreakdownResponse response = analyticsService.getBrowserBreakdown(urlId, period);
     return toResponseSingleResponse(response);
   }
+
+  @Operation(summary = "Get clicks by referrer source",
+      description = "Returns click breakdown by referrer for a URL or all user URLs")
+  @SecurityRequirement(name = "bearerAuth")
+  @GetMapping(path = ApiPath.ANALYTICS_CLICKS_SOURCES, produces = MediaType.APPLICATION_JSON_VALUE)
+  public RestSingleResponse<BreakdownResponse> getSourceBreakdown(
+      @Parameter(description = "URL ID (omit for all user URLs)")
+      @RequestParam(required = false) Long urlId,
+      @Parameter(description = "Time period: 1h, 6h, 1d, 7d, 30d")
+      @RequestParam String period) {
+    BreakdownResponse response = analyticsService.getSourceBreakdown(urlId, period);
+    return toResponseSingleResponse(response);
+  }
 }

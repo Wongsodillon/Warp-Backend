@@ -24,6 +24,8 @@ public final class ApiPath {
 
   public static final String ANALYTICS_CLICKS_BROWSERS = "/api/v1/analytics/clicks/browsers";
 
+  public static final String ANALYTICS_CLICKS_SOURCES = "/api/v1/analytics/clicks/sources";
+
   public static final String NOT_FOUND = "/not-found-url";
   public static final String EXPIRED = "/expired";
   public static final String PASSWORD = "/password";
