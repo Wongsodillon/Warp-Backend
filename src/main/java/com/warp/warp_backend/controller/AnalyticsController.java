@@ -37,15 +37,13 @@ public class AnalyticsController extends BaseController {
   }
 
   @Operation(summary = "Get top URLs click timeseries",
-      description = "Returns top N URLs by total clicks with individual zero-filled time-series for the current user")
+      description = "Returns top URLs by total clicks with individual zero-filled time-series for the current user")
   @SecurityRequirement(name = "bearerAuth")
   @GetMapping(path = ApiPath.ANALYTICS_CLICKS_TOP_URLS_TIMESERIES, produces = MediaType.APPLICATION_JSON_VALUE)
   public RestSingleResponse<TopUrlsTimeSeriesResponse> getTopUrlsTimeSeries(
       @Parameter(description = "Time period: 1h, 6h, 1d, 7d, 30d")
-      @RequestParam String period,
-      @Parameter(description = "Number of top URLs to return (1-100, default 10)")
-      @RequestParam(defaultValue = "10") int limit) {
-    TopUrlsTimeSeriesResponse response = analyticsService.getTopUrlsTimeSeries(period, limit);
+      @RequestParam String period) {
+    TopUrlsTimeSeriesResponse response = analyticsService.getTopUrlsTimeSeries(period);
     return toResponseSingleResponse(response);
   }
 

@@ -78,13 +78,10 @@ public class AnalyticsService {
         .build();
   }
 
-  public TopUrlsTimeSeriesResponse getTopUrlsTimeSeries(String periodValue, int limit) {
+  public TopUrlsTimeSeriesResponse getTopUrlsTimeSeries(String periodValue) {
     Period period = Period.fromValue(periodValue);
     if (Objects.isNull(period)) {
       throw new BaseException(ErrorCode.INVALID_PERIOD);
-    }
-    if (limit < 1 || limit > applicationProperties.getTopUrlsMaxLimit()) {
-      throw new BaseException(ErrorCode.INVALID_LIMIT);
     }
 
     Long currentUserId = currentUserService.getCurrentUserId();
@@ -98,7 +95,10 @@ public class AnalyticsService {
           .build();
     }
 
-    List<UrlClicksAggregate> topUrls = clickHouseAnalyticsRepository.queryTopUrlsByClicks(userUrlIds, period, limit);
+    List<UrlClicksAggregate> topUrls = clickHouseAnalyticsRepository.queryTopUrlsByClicks(
+        userUrlIds, period, applicationProperties.getTopUrlsMaxLimit()).stream()
+        .filter(u -> u.getTotalClicks() > 0)
+        .toList();
 
     if (topUrls.isEmpty()) {
       return TopUrlsTimeSeriesResponse.builder()
