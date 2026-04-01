@@ -30,4 +30,7 @@ public class ApplicationProperties {
 
   @Value("#{'${application.reserved.short-url}'.split(',')}")
   private List<String> reservedShortUrl;
+
+  @Value("${application.analytics.top-urls.max-limit}")
+  private int topUrlsMaxLimit;
 }
