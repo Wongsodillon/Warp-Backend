@@ -1,6 +1,6 @@
 # Warp
 
-A high-throughput URL shortener built to handle millions of daily redirects, with a real-time analytics pipeline and sub-50ms redirect latency target.
+A high-throughput URL shortener built to handle millions of daily redirects, with a real-time analytics pipeline.
 
 ---
 
