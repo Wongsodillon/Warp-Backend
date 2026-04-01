@@ -57,7 +57,7 @@ Redis unavailability must not take down redirects. `CacheUtil` wraps all Redis o
 
 ### Kafka for analytics decoupling
 
-Writing click telemetry synchronously would add 5–20ms to every redirect and couple redirect availability to analytics availability. Instead, the redirect handler builds a `UrlClickEvent` and calls `KafkaTemplate.send()` non-blocking — the `CompletableFuture` callback logs ACK/failure but the HTTP response is already sent. If Kafka is down, click events are lost for that window (logged as warnings), but redirects are unaffected. ClickHouse's long Kafka retention means the pipeline catches up automatically on recovery.
+Writing click telemetry synchronously would increase latency severely by 200-300ms to every redirect and couple redirect availability to analytics availability. Instead, the redirect handler builds a `UrlClickEvent` and calls `KafkaTemplate.send()` non-blocking — the `CompletableFuture` callback logs ACK/failure but the HTTP response is already sent. If Kafka is down, click events are lost for that window (logged as warnings), but redirects are unaffected. ClickHouse's long Kafka retention means the pipeline catches up automatically on recovery.
 
 ### ClickHouse OLAP pipeline — no Spring consumer
 
