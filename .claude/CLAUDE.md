@@ -101,30 +101,6 @@ Kafka events flow: Spring producer → Kafka topic `url.click.event` → ClickHo
 - Columns: minute (DateTime), url_id (UInt64), country_code (LowCardinality(String)), device_type (LowCardinality(String)), browser (LowCardinality(String)), referrer (LowCardinality(Nullable(String))), clicks (AggregateFunction(count)), avg_latency (AggregateFunction(avg, UInt32))
 - ORDER BY (url_id, minute)
 
-### Query Patterns
-
-Use `countMerge(clicks)` and `avgMerge(avg_latency)` when querying minute_analytics.
-
--- Total clicks for a URL
-SELECT countMerge(clicks) FROM minute_analytics WHERE url_id = ? AND minute >= now() - INTERVAL ? DAY;
-
--- Clicks by country
-SELECT country_code, countMerge(clicks) AS total_clicks FROM minute_analytics WHERE url_id = ? GROUP BY country_code ORDER BY total_clicks DESC;
-
--- Clicks by device
-SELECT device_type, countMerge(clicks) AS total_clicks FROM minute_analytics WHERE url_id = ? GROUP BY device_type ORDER BY total_clicks DESC;
-
--- Clicks by browser
-SELECT browser, countMerge(clicks) AS total_clicks FROM minute_analytics WHERE url_id = ? GROUP BY browser ORDER BY total_clicks DESC;
-
--- Referrer analytics
-SELECT referrer, countMerge(clicks) AS total_clicks FROM minute_analytics WHERE url_id = ? AND minute >= now() - INTERVAL ? DAY GROUP BY referrer ORDER BY total_clicks DESC;
-
--- Time-series (clicks per minute/hour)
-SELECT minute, countMerge(clicks) AS total_clicks FROM minute_analytics WHERE url_id = ? AND minute >= now() - INTERVAL ? DAY GROUP BY minute ORDER BY minute;
-
-Supported windows: 1d, 3d, 7d, 30d
-
 ### ClickHouse JDBC
 
 Use clickhouse-jdbc driver. Connection: jdbc:clickhouse://localhost:8123/default
