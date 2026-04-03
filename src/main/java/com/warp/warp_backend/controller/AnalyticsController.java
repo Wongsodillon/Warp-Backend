@@ -28,11 +28,11 @@ public class AnalyticsController extends BaseController {
   @SecurityRequirement(name = "bearerAuth")
   @GetMapping(path = ApiPath.ANALYTICS_CLICKS_TIMESERIES, produces = MediaType.APPLICATION_JSON_VALUE)
   public RestSingleResponse<TimeSeriesResponse> getClicksTimeSeries(
-      @Parameter(description = "URL ID (omit for all user URLs)")
-      @RequestParam(required = false) Long urlId,
+      @Parameter(description = "Short URL code (omit for all user URLs)")
+      @RequestParam(required = false) String shortUrl,
       @Parameter(description = "Time period: 1h, 6h, 1d, 7d, 30d")
       @RequestParam String period) {
-    TimeSeriesResponse response = analyticsService.getClicksTimeSeries(urlId, period);
+    TimeSeriesResponse response = analyticsService.getClicksTimeSeries(shortUrl, period);
     return toResponseSingleResponse(response);
   }
 
@@ -52,11 +52,11 @@ public class AnalyticsController extends BaseController {
   @SecurityRequirement(name = "bearerAuth")
   @GetMapping(path = ApiPath.ANALYTICS_CLICKS_DEVICES, produces = MediaType.APPLICATION_JSON_VALUE)
   public RestSingleResponse<BreakdownResponse> getDeviceBreakdown(
-      @Parameter(description = "URL ID (omit for all user URLs)")
-      @RequestParam(required = false) Long urlId,
+      @Parameter(description = "Short URL code (omit for all user URLs)")
+      @RequestParam(required = false) String shortUrl,
       @Parameter(description = "Time period: 1h, 6h, 1d, 7d, 30d")
       @RequestParam String period) {
-    BreakdownResponse response = analyticsService.getDeviceBreakdown(urlId, period);
+    BreakdownResponse response = analyticsService.getDeviceBreakdown(shortUrl, period);
     return toResponseSingleResponse(response);
   }
 
@@ -65,11 +65,11 @@ public class AnalyticsController extends BaseController {
   @SecurityRequirement(name = "bearerAuth")
   @GetMapping(path = ApiPath.ANALYTICS_CLICKS_COUNTRIES, produces = MediaType.APPLICATION_JSON_VALUE)
   public RestSingleResponse<BreakdownResponse> getCountryBreakdown(
-      @Parameter(description = "URL ID (omit for all user URLs)")
-      @RequestParam(required = false) Long urlId,
+      @Parameter(description = "Short URL code (omit for all user URLs)")
+      @RequestParam(required = false) String shortUrl,
       @Parameter(description = "Time period: 1h, 6h, 1d, 7d, 30d")
       @RequestParam String period) {
-    BreakdownResponse response = analyticsService.getCountryBreakdown(urlId, period);
+    BreakdownResponse response = analyticsService.getCountryBreakdown(shortUrl, period);
     return toResponseSingleResponse(response);
   }
 
@@ -78,11 +78,11 @@ public class AnalyticsController extends BaseController {
   @SecurityRequirement(name = "bearerAuth")
   @GetMapping(path = ApiPath.ANALYTICS_CLICKS_BROWSERS, produces = MediaType.APPLICATION_JSON_VALUE)
   public RestSingleResponse<BreakdownResponse> getBrowserBreakdown(
-      @Parameter(description = "URL ID (omit for all user URLs)")
-      @RequestParam(required = false) Long urlId,
+      @Parameter(description = "Short URL code (omit for all user URLs)")
+      @RequestParam(required = false) String shortUrl,
       @Parameter(description = "Time period: 1h, 6h, 1d, 7d, 30d")
       @RequestParam String period) {
-    BreakdownResponse response = analyticsService.getBrowserBreakdown(urlId, period);
+    BreakdownResponse response = analyticsService.getBrowserBreakdown(shortUrl, period);
     return toResponseSingleResponse(response);
   }
 
@@ -91,11 +91,11 @@ public class AnalyticsController extends BaseController {
   @SecurityRequirement(name = "bearerAuth")
   @GetMapping(path = ApiPath.ANALYTICS_CLICKS_SOURCES, produces = MediaType.APPLICATION_JSON_VALUE)
   public RestSingleResponse<BreakdownResponse> getSourceBreakdown(
-      @Parameter(description = "URL ID (omit for all user URLs)")
-      @RequestParam(required = false) Long urlId,
+      @Parameter(description = "Short URL code (omit for all user URLs)")
+      @RequestParam(required = false) String shortUrl,
       @Parameter(description = "Time period: 1h, 6h, 1d, 7d, 30d")
       @RequestParam String period) {
-    BreakdownResponse response = analyticsService.getSourceBreakdown(urlId, period);
+    BreakdownResponse response = analyticsService.getSourceBreakdown(shortUrl, period);
     return toResponseSingleResponse(response);
   }
 }

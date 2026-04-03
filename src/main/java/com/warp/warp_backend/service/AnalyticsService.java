@@ -49,7 +49,7 @@ public class AnalyticsService {
   @Autowired
   private ApplicationProperties applicationProperties;
 
-  public TimeSeriesResponse getClicksTimeSeries(Long urlId, String periodValue) {
+  public TimeSeriesResponse getClicksTimeSeries(String shortUrl, String periodValue) {
     Period period = Period.fromValue(periodValue);
     if (Objects.isNull(period)) {
       throw new BaseException(ErrorCode.INVALID_PERIOD);
@@ -58,13 +58,13 @@ public class AnalyticsService {
     Long currentUserId = currentUserService.getCurrentUserId();
 
     List<TimeSeriesDataPoint> rawData;
-    if (Objects.nonNull(urlId)) {
-      Url url = urlRepository.findById(urlId)
+    if (Objects.nonNull(shortUrl)) {
+      Url url = urlRepository.findByShortUrlAndDeletedDateIsNull(shortUrl)
           .orElseThrow(() -> new NotFoundException(ErrorCode.DESTINATION_URL_NOT_FOUND));
       if (!url.getUserId().equals(currentUserId)) {
         throw new BaseException(ErrorCode.URL_ACCESS_FORBIDDEN);
       }
-      rawData = clickHouseAnalyticsRepository.queryTimeSeriesByUrlId(urlId, period);
+      rawData = clickHouseAnalyticsRepository.queryTimeSeriesByUrlId(url.getId(), period);
     } else {
       List<Long> urlIds = urlRepository.findAllIdsByUserId(currentUserId);
       rawData = clickHouseAnalyticsRepository.queryTimeSeriesByUrlIds(urlIds, period);
@@ -118,7 +118,6 @@ public class AnalyticsService {
           List<TimeSeriesDataPoint> raw = clickHouseAnalyticsRepository.queryTimeSeriesByUrlId(urlTotal.getUrlId(), period);
           List<TimeSeriesDataPoint> filled = zeroFill(raw, period);
           return TopUrlTimeSeriesEntry.builder()
-              .urlId(urlTotal.getUrlId())
               .shortUrl(shortUrlById.get(urlTotal.getUrlId()))
               .totalClicks(urlTotal.getTotalClicks())
               .timeseries(filled)
@@ -133,34 +132,34 @@ public class AnalyticsService {
         .build();
   }
 
-  public BreakdownResponse getDeviceBreakdown(Long urlId, String periodValue) {
+  public BreakdownResponse getDeviceBreakdown(String shortUrl, String periodValue) {
     Period period = parsePeriod(periodValue);
     Long currentUserId = currentUserService.getCurrentUserId();
-    return getBreakdown(urlId, period, currentUserId,
+    return getBreakdown(shortUrl, period, currentUserId,
         id -> clickHouseAnalyticsRepository.queryDeviceBreakdownByUrlId(id, period),
         ids -> clickHouseAnalyticsRepository.queryDeviceBreakdownByUrlIds(ids, period));
   }
 
-  public BreakdownResponse getCountryBreakdown(Long urlId, String periodValue) {
+  public BreakdownResponse getCountryBreakdown(String shortUrl, String periodValue) {
     Period period = parsePeriod(periodValue);
     Long currentUserId = currentUserService.getCurrentUserId();
-    return getBreakdown(urlId, period, currentUserId,
+    return getBreakdown(shortUrl, period, currentUserId,
         id -> clickHouseAnalyticsRepository.queryCountryBreakdownByUrlId(id, period),
         ids -> clickHouseAnalyticsRepository.queryCountryBreakdownByUrlIds(ids, period));
   }
 
-  public BreakdownResponse getBrowserBreakdown(Long urlId, String periodValue) {
+  public BreakdownResponse getBrowserBreakdown(String shortUrl, String periodValue) {
     Period period = parsePeriod(periodValue);
     Long currentUserId = currentUserService.getCurrentUserId();
-    return getBreakdown(urlId, period, currentUserId,
+    return getBreakdown(shortUrl, period, currentUserId,
         id -> clickHouseAnalyticsRepository.queryBrowserBreakdownByUrlId(id, period),
         ids -> clickHouseAnalyticsRepository.queryBrowserBreakdownByUrlIds(ids, period));
   }
 
-  public BreakdownResponse getSourceBreakdown(Long urlId, String periodValue) {
+  public BreakdownResponse getSourceBreakdown(String shortUrl, String periodValue) {
     Period period = parsePeriod(periodValue);
     Long currentUserId = currentUserService.getCurrentUserId();
-    return getBreakdown(urlId, period, currentUserId,
+    return getBreakdown(shortUrl, period, currentUserId,
         id -> clickHouseAnalyticsRepository.querySourceBreakdownByUrlId(id, period),
         ids -> clickHouseAnalyticsRepository.querySourceBreakdownByUrlIds(ids, period));
   }
@@ -173,17 +172,17 @@ public class AnalyticsService {
     return period;
   }
 
-  private BreakdownResponse getBreakdown(Long urlId, Period period, Long currentUserId,
+  private BreakdownResponse getBreakdown(String shortUrl, Period period, Long currentUserId,
       Function<Long, List<BreakdownItem>> queryByUrlId, Function<List<Long>, List<BreakdownItem>> queryByUrlIds) {
 
     List<BreakdownItem> items;
-    if (Objects.nonNull(urlId)) {
-      Url url = urlRepository.findById(urlId)
+    if (Objects.nonNull(shortUrl)) {
+      Url url = urlRepository.findByShortUrlAndDeletedDateIsNull(shortUrl)
           .orElseThrow(() -> new NotFoundException(ErrorCode.DESTINATION_URL_NOT_FOUND));
       if (!url.getUserId().equals(currentUserId)) {
         throw new BaseException(ErrorCode.URL_ACCESS_FORBIDDEN);
       }
-      items = queryByUrlId.apply(urlId);
+      items = queryByUrlId.apply(url.getId());
     } else {
       List<Long> userUrlIds = urlRepository.findAllIdsByUserId(currentUserId);
       if (userUrlIds.isEmpty()) {

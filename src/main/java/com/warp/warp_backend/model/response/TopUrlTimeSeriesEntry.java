@@ -12,7 +12,6 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class TopUrlTimeSeriesEntry {
-  private Long urlId;
   private String shortUrl;
   private Long totalClicks;
   private List<TimeSeriesDataPoint> timeseries;

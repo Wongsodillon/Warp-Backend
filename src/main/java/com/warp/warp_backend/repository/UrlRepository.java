@@ -13,6 +13,8 @@ public interface UrlRepository extends JpaRepository<Url, Long>, UrlCustomReposi
 
   Optional<Url> findByShortUrl(String shortUrl);
 
+  Optional<Url> findByShortUrlAndDeletedDateIsNull(String shortUrl);
+
   @Query(value = "SELECT nextval('urls_id_seq')", nativeQuery = true)
   Long getNextId();
 
