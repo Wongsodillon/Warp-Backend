@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS click_events_raw
 ) ENGINE = MergeTree()
 PARTITION BY toYYYYMM(timestamp)
 ORDER BY (url_id, timestamp)
-TTL timestamp + INTERVAL 30 DAY;
+TTL toDateTime(timestamp) + INTERVAL 30 DAY;
 
 -- 3. MV: Kafka source -> raw storage (renames columns, converts timestamp Float64 -> DateTime64)
 CREATE MATERIALIZED VIEW IF NOT EXISTS click_events_consumer
