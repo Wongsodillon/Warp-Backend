@@ -1,0 +1,8 @@
+<clickhouse>
+    <kafka>
+        <security_protocol>SASL_SSL</security_protocol>
+        <sasl_mechanism>PLAIN</sasl_mechanism>
+        <sasl_username><from_env>KAFKA_API_KEY</from_env></sasl_username>
+        <sasl_password><from_env>KAFKA_API_SECRET</from_env></sasl_password>
+    </kafka>
+</clickhouse>
